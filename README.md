@@ -2,6 +2,8 @@
 
 `TaskTraceMCPPlugin` is the standalone public packaging repo for connecting the local TaskTrace desktop app to MCP-capable clients.
 
+Full documentation — resources, tools, installation, and configuration — is at **[tasktrace.com/docs](https://tasktrace.com/docs)**.
+
 It currently includes packaging for:
 
 - OpenClaw native plugins
@@ -40,12 +42,14 @@ The server itself is still the TaskTrace desktop app. Every client path here lau
 
 ## Docs reviewed
 
-- OpenClaw bundle docs: `https://docs.openclaw.ai/plugins/bundles`
-- OpenClaw native plugin docs: `https://docs.openclaw.ai/plugins/building-plugins`
-- OpenClaw plugin CLI docs: `https://docs.openclaw.ai/tools/plugin`
-- Claude MCP docs: `https://code.claude.com/docs/en/mcp`
-- Claude plugin docs: `https://code.claude.com/docs/en/plugins`
-- MCP lifecycle spec: `https://modelcontextprotocol.io/specification/2024-11-05/basic/lifecycle`
+- OpenClaw bundle docs: https://docs.openclaw.ai/plugins/bundles
+- OpenClaw native plugin docs: https://docs.openclaw.ai/plugins/building-plugins
+- OpenClaw plugin manifest reference: https://docs.openclaw.ai/plugins/manifest
+- OpenClaw plugin CLI docs: https://docs.openclaw.ai/cli/plugins
+- Claude MCP docs: https://code.claude.com/docs/en/mcp
+- Claude plugin docs: https://code.claude.com/docs/en/plugins
+- MCP lifecycle spec: https://modelcontextprotocol.io/specification/2024-11-05/basic/lifecycle
+- TaskTrace MCP server docs: https://tasktrace.com/docs
 
 ## Current packaging state
 
@@ -66,11 +70,17 @@ What still needs product-level QA on a normal TaskTrace machine:
 
 ### OpenClaw
 
-Install locally from the repo root:
+Install from ClawHub:
 
 ```bash
-openclaw plugins install .
+openclaw plugins install tasktrace-mcp-plugin
 openclaw plugins info tasktrace-mcp-plugin
+```
+
+Or install directly from the GitHub repo (tracks latest commit, no version pinning):
+
+```bash
+openclaw plugins install tasktrace-mcp-plugin --marketplace warrenronsiek/TaskTraceMCPPlugin
 ```
 
 Optional OpenClaw config:
@@ -180,32 +190,25 @@ claude --plugin-dir .
 
 Current practical guidance:
 
-- for OpenClaw, the npm package or `.tgz` from `npm pack` is the canonical tested artifact
-- for Claude, the local plugin layout is ready, and official submission remains a separate marketplace workflow
+- for OpenClaw, install from ClawHub (`openclaw plugins install tasktrace-mcp-plugin`) or directly from the GitHub repo
+- for Claude, direct MCP registration or local plugin layout from a clone
 
 ## CircleCI Release Flow
 
-This repo now includes a CircleCI release pipeline in `.circleci/config.yml` that mirrors the TaskTrace pattern:
+This repo includes a CircleCI release pipeline in `.circleci/config.yml`:
 
 1. fetch full git history and tags
 2. run `semantic-release`
 3. stop cleanly when there is no release
-4. sync manifest versions with `versionUpdate.mjs`
-5. build the tarball
-6. publish the package to npm using the semver-derived dist-tag
+4. sync manifest versions with `versionUpdate.mjs` and build the tarball (`npm pack`)
+5. commit version-bumped files back to the branch and push the release tag
+
+The `.tgz` is stored as a CircleCI artifact and manually uploaded to ClawHub to publish a versioned release there.
 
 Branch behavior matches TaskTrace:
 
 - `master`: stable releases
 - `dev`: prereleases
-
-Required CircleCI environment variables:
-
-- `GITHUB_DEPLOY_KEY_B64`
-  Base64-encoded SSH deploy key with push access so `semantic-release` can create and push tags.
-
-- `NPM_TOKEN`
-  npm automation token with publish access for `tasktrace-mcp-plugin`.
 
 The CI job derives the npm dist-tag from the release version:
 

@@ -94,7 +94,7 @@ const plugin = {
             uri: {
               type: "string",
               description:
-                "TaskTrace resource URI, for example tasktrace://overviews/active-day or a screenshot URI from the detailed activity feed.",
+                "TaskTrace resource URI. Named resources: tasktrace://overviews/active-day (overview), tasktrace://activities/high-level (summary-only activity list), tasktrace://activities/detailed (eager feed with keystrokes, OCR, transcripts, and screenshot metadata). Screenshot bytes: tasktrace://activity/{activityId}/screenshot/{screenshotId} — URIs are embedded in the detailed activity feed.",
             },
           },
           required: ["uri"],

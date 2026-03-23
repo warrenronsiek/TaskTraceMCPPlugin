@@ -20,7 +20,7 @@ jobs:
           command: |
             npm install
       - run:
-          name: Calculate release version
+          name: Run semantic-release
           no_output_timeout: 20m
           command: |
             rm -f .release-version.env
@@ -44,20 +44,6 @@ jobs:
               echo "Not a release"
               circleci-agent step halt
             fi
-      - run:
-          name: Build release tarball
-          command: |
-            . ./.release-version.env
-            mkdir -p dist
-            PACKAGE_FILE="$(npm pack)"
-            mv "$PACKAGE_FILE" "dist/$PACKAGE_TARBALL"
-      - run:
-          name: Publish package to npm
-          command: |
-            . ./.release-version.env
-            test -n "$NPM_TOKEN"
-            printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" > ~/.npmrc
-            npm publish "dist/$PACKAGE_TARBALL" --access public --tag "$NPM_DIST_TAG"
       - store_artifacts:
           path: dist
 
