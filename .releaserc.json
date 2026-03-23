@@ -74,6 +74,6 @@
         "assets": ["package.json", "index.js", ".claude-plugin/plugin.json", ".cursor-plugin/plugin.json"],
         "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
-    ],
+    ]
   ]
 }
