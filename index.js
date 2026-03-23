@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 const PLUGIN_ID = "tasktrace-mcp-plugin";
-const PLUGIN_VERSION = "0.1.0";
+const PLUGIN_VERSION = "1.1.0";
 const MCP_PROTOCOL_VERSION = "2024-11-05";
 const DEFAULT_TASKTRACE_APP_PATH = "/Applications/TaskTrace.app";
 const DEFAULT_STARTUP_TIMEOUT_MS = 10000;
