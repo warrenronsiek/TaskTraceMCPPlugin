@@ -105,23 +105,17 @@ Optional OpenClaw config:
 
 ### Claude Code
 
-Direct MCP registration:
+Install via the plugin marketplace (automatically registers the MCP server):
+
+```text
+/plugin marketplace add warrenronsiek/TaskTraceMCPPlugin
+/plugin install tasktrace-mcp-plugin@tasktrace-mcp
+```
+
+Or register the MCP server directly:
 
 ```bash
 claude mcp add --transport stdio --scope project tasktrace -- /Applications/TaskTrace.app/Contents/MacOS/TaskTrace --mcp-stdio
-```
-
-Local plugin loading from the repo root:
-
-```bash
-claude --plugin-dir .
-```
-
-Inside Claude Code:
-
-```text
-/reload-plugins
-/mcp
 ```
 
 ### Generic `.mcp.json`

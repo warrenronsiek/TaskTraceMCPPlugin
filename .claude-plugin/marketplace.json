@@ -1,0 +1,21 @@
+{
+  "name": "tasktrace-mcp",
+  "owner": {
+    "name": "TaskTrace",
+    "email": "support@tasktrace.com"
+  },
+  "metadata": {
+    "description": "TaskTrace MCP integration for Claude Code and compatible clients."
+  },
+  "plugins": [
+    {
+      "name": "tasktrace-mcp-plugin",
+      "source": "./",
+      "description": "Connects the local TaskTrace desktop app to Claude Code as an MCP server, exposing your work history, activity feeds, and screenshots.",
+      "homepage": "https://tasktrace.com/docs",
+      "repository": "https://github.com/warrenronsiek/TaskTraceMCPPlugin",
+      "license": "MIT",
+      "keywords": ["tasktrace", "mcp", "activity", "productivity", "screen-recording"]
+    }
+  ]
+}
