@@ -21,7 +21,7 @@
     "versionUpdate.mjs"
   ],
   "scripts": {
-    "pack": "npm pack",
+    "pack": "bash scripts/clawhub-pack.sh \"$(node -p 'require(\"./package.json\").version')\"",
     "set-version": "node ./versionUpdate.mjs",
     "semantic-release": "semantic-release"
   },

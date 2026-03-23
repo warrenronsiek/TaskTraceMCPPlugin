@@ -16,6 +16,10 @@ jobs:
             git fetch --tags origin "$CIRCLE_BRANCH"
             git checkout -B "$CIRCLE_BRANCH" "origin/$CIRCLE_BRANCH"
       - run:
+          name: Install system tools
+          command: |
+            sudo apt-get update -qq && sudo apt-get install -y zip
+      - run:
           name: Install release tooling
           command: |
             npm install

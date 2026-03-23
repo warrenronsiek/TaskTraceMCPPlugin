@@ -65,7 +65,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "node versionUpdate.mjs ${nextRelease.version} && mkdir -p dist && npm pack --pack-destination dist/"
+        "prepareCmd": "node versionUpdate.mjs ${nextRelease.version} && bash scripts/clawhub-pack.sh ${nextRelease.version}"
       }
     ],
     [
