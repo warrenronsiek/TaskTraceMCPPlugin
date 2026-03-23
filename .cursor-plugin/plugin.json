@@ -1,0 +1,5 @@
+{
+  "name": "tasktrace-mcp-plugin",
+  "version": "0.1.0",
+  "description": "TaskTrace MCP bundle metadata for Cursor-compatible clients."
+}

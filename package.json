@@ -1,0 +1,41 @@
+{
+  "name": "tasktrace-mcp-plugin",
+  "version": "0.1.0",
+  "description": "TaskTrace MCP integration package for OpenClaw, Claude Code, and Cursor-compatible bundles.",
+  "type": "module",
+  "license": "MIT",
+  "private": false,
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ]
+  },
+  "files": [
+    "index.js",
+    "openclaw.plugin.json",
+    ".claude-plugin",
+    ".cursor-plugin",
+    ".mcp.json",
+    "README.md",
+    "scripts",
+    "versionUpdate.mjs"
+  ],
+  "scripts": {
+    "pack": "npm pack",
+    "set-version": "node ./versionUpdate.mjs",
+    "semantic-release": "semantic-release"
+  },
+  "dependencies": {
+    "semver": "^7.7.2"
+  },
+  "devDependencies": {
+    "@semantic-release/commit-analyzer": "13.0.1",
+    "@semantic-release/exec": "7.1.0",
+    "@semantic-release/release-notes-generator": "14.1.0",
+    "conventional-changelog-conventionalcommits": "8.0.0",
+    "semantic-release": "24.2.7"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

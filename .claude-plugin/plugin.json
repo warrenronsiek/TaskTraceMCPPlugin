@@ -1,0 +1,11 @@
+{
+  "name": "tasktrace-mcp-plugin",
+  "description": "TaskTrace MCP plugin for Claude Code.",
+  "version": "0.1.0",
+  "mcpServers": {
+    "tasktrace": {
+      "command": "/Applications/TaskTrace.app/Contents/MacOS/TaskTrace",
+      "args": ["--mcp-stdio"]
+    }
+  }
+}
