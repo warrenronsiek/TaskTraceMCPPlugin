@@ -6,7 +6,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 const execFileAsync = promisify(execFile);
 
 const PLUGIN_ID = "tasktrace-mcp-plugin";
-const PLUGIN_VERSION = "1.3.0";
+const PLUGIN_VERSION = "1.4.0";
 const DEFAULT_TASKTRACE_APP_PATH = "/Applications/TaskTrace.app";
 const DEFAULT_STARTUP_TIMEOUT_MS = 10000;
 const TASKTRACE_BUNDLE_ID = "com.tasktrace.TaskTrace";
