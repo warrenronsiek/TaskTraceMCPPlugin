@@ -1,15 +1,18 @@
-import { execFile, spawn } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const execFileAsync = promisify(execFile);
 
 const PLUGIN_ID = "tasktrace-mcp-plugin";
 const PLUGIN_VERSION = "1.3.0";
-const MCP_PROTOCOL_VERSION = "2024-11-05";
 const DEFAULT_TASKTRACE_APP_PATH = "/Applications/TaskTrace.app";
 const DEFAULT_STARTUP_TIMEOUT_MS = 10000;
 const TASKTRACE_BUNDLE_ID = "com.tasktrace.TaskTrace";
 const TASKTRACE_MCP_ARGUMENT = "--mcp-stdio";
+
+let sharedSessionState = null;
 
 const plugin = {
   id: PLUGIN_ID,
@@ -49,308 +52,276 @@ const plugin = {
       return { tasktracePath, startupTimeoutMs };
     };
 
-    api.registerTool(
-      {
-        name: "tasktrace_list_resources",
-        label: "TaskTrace List Resources",
-        description:
-          "List the enabled TaskTrace MCP resources and screenshot templates currently exposed by the local TaskTrace desktop app.",
-        parameters: {
-          type: "object",
-          additionalProperties: false,
-          properties: {},
-        },
-        async execute() {
-          const payload = await withTaskTraceSession(resolveConfig(), async ({ request, binaryPath }) => {
-            const resources = await request("resources/list", {});
-            const templates = await request("resources/templates/list", {});
-
-            return {
-              binaryPath,
-              resources: Array.isArray(resources?.resources) ? resources.resources : [],
-              templates: Array.isArray(templates?.templates) ? templates.templates : [],
-            };
-          });
+    api.registerTool({
+      name: "tasktrace_list_resources",
+      label: "TaskTrace List Resources",
+      description:
+        "List the enabled TaskTrace MCP resources and screenshot templates currently exposed by the local TaskTrace desktop app.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {},
+      },
+      async execute() {
+        const payload = await withTaskTraceClient(resolveConfig(), async ({ client, binaryPath, requestOptions }) => {
+          const resources = await client.listResources(undefined, requestOptions);
+          const templates = await client.listResourceTemplates(undefined, requestOptions);
 
           return {
-            content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
-            details: payload,
+            binaryPath,
+            resources: Array.isArray(resources?.resources) ? resources.resources : [],
+            templates: Array.isArray(templates?.resourceTemplates)
+              ? templates.resourceTemplates
+              : Array.isArray(templates?.templates)
+                ? templates.templates
+                : [],
           };
-        },
+        });
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+          details: payload,
+        };
       },
-      { optional: true },
-    );
+    });
 
-    api.registerTool(
-      {
-        name: "tasktrace_read_resource",
-        label: "TaskTrace Read Resource",
-        description:
-          "Read a specific TaskTrace MCP resource URI. Text resources are returned as text, and screenshot resources are returned as image content blocks when possible.",
-        parameters: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            uri: {
-              type: "string",
-              description:
-                "TaskTrace resource URI. Named resources: tasktrace://overviews/active-day (overview), tasktrace://activities/high-level (summary-only activity list), tasktrace://activities/detailed (eager feed with keystrokes, OCR, transcripts, and screenshot metadata). Screenshot bytes: tasktrace://activity/{activityId}/screenshot/{screenshotId} — URIs are embedded in the detailed activity feed.",
-            },
+    api.registerTool({
+      name: "tasktrace_read_resource",
+      label: "TaskTrace Read Resource",
+      description:
+        "Read a specific TaskTrace MCP resource URI. Text resources are returned as text, and screenshot resources are returned as image content blocks when possible.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          uri: {
+            type: "string",
+            description:
+              "TaskTrace resource URI. Named resources: tasktrace://overviews/active-day (overview), tasktrace://activities/high-level (summary-only activity list), tasktrace://activities/detailed (eager feed with keystrokes, OCR, transcripts, and screenshot metadata). Screenshot bytes: tasktrace://activity/{activityId}/screenshot/{screenshotId} — URIs are embedded in the detailed activity feed.",
           },
-          required: ["uri"],
         },
-        async execute(_toolCallId, params) {
-          const payload = await withTaskTraceSession(resolveConfig(), async ({ request, binaryPath }) => {
-            const result = await request("resources/read", { uri: params.uri });
+        required: ["uri"],
+      },
+      async execute(_toolCallId, params) {
+        const payload = await withTaskTraceClient(resolveConfig(), async ({ client, binaryPath, requestOptions }) => {
+          const result = await client.readResource({ uri: params.uri }, requestOptions);
 
-            return {
-              binaryPath,
-              uri: params.uri,
-              contents: Array.isArray(result?.contents) ? result.contents : [],
-            };
-          });
+          return {
+            binaryPath,
+            uri: params.uri,
+            contents: Array.isArray(result?.contents) ? result.contents : [],
+          };
+        });
 
-          const content = payload.contents.flatMap((entry) => {
-            if (typeof entry?.text === "string") {
-              return [{ type: "text", text: entry.text }];
-            }
+        const content = payload.contents.flatMap((entry) => {
+          if (typeof entry?.text === "string") {
+            return [{ type: "text", text: entry.text }];
+          }
 
-            if (typeof entry?.blob === "string" && typeof entry?.mimeType === "string" && entry.mimeType.startsWith("image/")) {
-              return [
-                {
-                  type: "image",
-                  mimeType: entry.mimeType,
-                  data: entry.blob,
-                },
-                {
-                  type: "text",
-                  text: `Read TaskTrace image resource ${entry.uri ?? params.uri}.`,
-                },
-              ];
-            }
+          if (typeof entry?.blob === "string" && typeof entry?.mimeType === "string" && entry.mimeType.startsWith("image/")) {
+            return [
+              {
+                type: "image",
+                mimeType: entry.mimeType,
+                data: entry.blob,
+              },
+              {
+                type: "text",
+                text: `Read TaskTrace image resource ${entry.uri ?? params.uri}.`,
+              },
+            ];
+          }
 
-            if (typeof entry?.blob === "string") {
-              return [
-                {
-                  type: "text",
-                  text: JSON.stringify(
-                    {
-                      uri: entry.uri ?? params.uri,
-                      mimeType: entry.mimeType ?? null,
-                      blobBase64: entry.blob,
-                    },
-                    null,
-                    2,
-                  ),
-                },
-              ];
-            }
-
+          if (typeof entry?.blob === "string") {
             return [
               {
                 type: "text",
-                text: JSON.stringify(entry ?? null, null, 2),
+                text: JSON.stringify(
+                  {
+                    uri: entry.uri ?? params.uri,
+                    mimeType: entry.mimeType ?? null,
+                    blobBase64: entry.blob,
+                  },
+                  null,
+                  2,
+                ),
               },
             ];
-          });
+          }
 
-          const details = {
-            binaryPath: payload.binaryPath,
-            uri: payload.uri,
-            contents: payload.contents.map((entry) => ({
-              uri: entry?.uri ?? payload.uri,
-              mimeType: entry?.mimeType ?? null,
-              hasText: typeof entry?.text === "string",
-              hasBlob: typeof entry?.blob === "string",
-            })),
-          };
+          return [
+            {
+              type: "text",
+              text: JSON.stringify(entry ?? null, null, 2),
+            },
+          ];
+        });
 
-          return {
-            content:
-              content.length > 0
-                ? content
-                : [{ type: "text", text: `TaskTrace resource ${params.uri} returned no content.` }],
-            details,
-          };
-        },
+        const details = {
+          binaryPath: payload.binaryPath,
+          uri: payload.uri,
+          contents: payload.contents.map((entry) => ({
+            uri: entry?.uri ?? payload.uri,
+            mimeType: entry?.mimeType ?? null,
+            hasText: typeof entry?.text === "string",
+            hasBlob: typeof entry?.blob === "string",
+          })),
+        };
+
+        return {
+          content:
+            content.length > 0
+              ? content
+              : [{ type: "text", text: `TaskTrace resource ${params.uri} returned no content.` }],
+          details,
+        };
       },
-      { optional: true },
-    );
+    });
   },
 };
 
-async function withTaskTraceSession(config, run) {
+async function withTaskTraceClient(config, run) {
+  let lastError;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const session = await getTaskTraceSession(config);
+
+    try {
+      return await run({
+        client: session.client,
+        binaryPath: session.binaryPath,
+        requestOptions: { timeout: config.startupTimeoutMs },
+      });
+    } catch (error) {
+      lastError = error;
+
+      if (!shouldRetryTaskTraceError(error) || attempt === 1) {
+        throw wrapTaskTraceError(error, session);
+      }
+
+      await invalidateTaskTraceSession(session);
+    }
+  }
+
+  throw wrapTaskTraceError(lastError);
+}
+
+async function getTaskTraceSession(config) {
   const binaryPath = await resolveTaskTraceBinary(config.tasktracePath);
-  const child = spawn(binaryPath, [TASKTRACE_MCP_ARGUMENT], {
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-  const pending = new Map();
-  let nextId = 1;
-  let stdoutBuffer = Buffer.alloc(0);
-  let stderrText = "";
-  let isClosed = false;
 
-  const rejectPending = (error) => {
-    if (pending.size === 0) {
-      return;
-    }
+  if (sharedSessionState?.binaryPath === binaryPath) {
+    return sharedSessionState.promise;
+  }
 
-    const entries = [...pending.values()];
-    pending.clear();
-    entries.forEach(({ reject, timeout }) => {
-      clearTimeout(timeout);
-      reject(error);
+  const state = {
+    binaryPath,
+    promise: null,
+    session: null,
+  };
+  const sessionPromise = createTaskTraceSession(binaryPath, config)
+    .then((session) => {
+      if (sharedSessionState === state) {
+        sharedSessionState.session = session;
+      }
+      return session;
+    })
+    .catch((error) => {
+      if (sharedSessionState === state) {
+        sharedSessionState = null;
+      }
+      throw error;
     });
-  };
 
-  const buildClosedError = () => {
-    const stderr = stderrText.trim();
+  state.promise = sessionPromise;
+  sharedSessionState = state;
 
-    return new Error(
-      stderr.length > 0
-        ? stderr
-        : "TaskTrace exited before the MCP request completed. Make sure TaskTrace is installed and the MCP server is enabled in the app.",
-    );
-  };
+  return sessionPromise;
+}
 
-  const parseMessages = () => {
-    while (true) {
-      const headerEnd = stdoutBuffer.indexOf("\r\n\r\n");
-      if (headerEnd === -1) {
-        return;
-      }
-
-      const headerText = stdoutBuffer.subarray(0, headerEnd).toString("utf8");
-      const lengthMatch = headerText.match(/Content-Length:\s*(\d+)/i);
-      if (!lengthMatch) {
-        rejectPending(new Error(`Invalid MCP frame headers from TaskTrace: ${headerText}`));
-        child.kill();
-        return;
-      }
-
-      const contentLength = Number(lengthMatch[1]);
-      const messageStart = headerEnd + 4;
-      const messageEnd = messageStart + contentLength;
-
-      if (stdoutBuffer.length < messageEnd) {
-        return;
-      }
-
-      const messageText = stdoutBuffer.subarray(messageStart, messageEnd).toString("utf8");
-      stdoutBuffer = stdoutBuffer.subarray(messageEnd);
-
-      let message;
-      try {
-        message = JSON.parse(messageText);
-      } catch (error) {
-        rejectPending(
-          new Error(`TaskTrace returned invalid MCP JSON: ${error instanceof Error ? error.message : String(error)}`),
-        );
-        child.kill();
-        return;
-      }
-
-      if (Object.prototype.hasOwnProperty.call(message, "id") && pending.has(message.id)) {
-        const pendingRequest = pending.get(message.id);
-        pending.delete(message.id);
-        clearTimeout(pendingRequest.timeout);
-
-        if (message.error) {
-          pendingRequest.reject(new Error(message.error.message ?? JSON.stringify(message.error)));
-        } else {
-          pendingRequest.resolve(message.result);
-        }
-      }
-    }
-  };
-
-  child.stdout.on("data", (chunk) => {
-    stdoutBuffer = Buffer.concat([stdoutBuffer, chunk]);
-    parseMessages();
+async function createTaskTraceSession(binaryPath, config) {
+  const transport = new StdioClientTransport({
+    command: binaryPath,
+    args: [TASKTRACE_MCP_ARGUMENT],
+    env: buildTaskTraceEnvironment(),
+    stderr: "pipe",
   });
+  let stderrText = "";
 
-  child.stderr.on("data", (chunk) => {
+  transport.stderr?.on("data", (chunk) => {
     stderrText = `${stderrText}${chunk.toString("utf8")}`.slice(-8000);
   });
 
-  child.on("error", (error) => {
-    isClosed = true;
-    rejectPending(error);
-  });
+  const client = new Client(
+    {
+      name: "TaskTraceMCPPlugin",
+      version: PLUGIN_VERSION,
+    },
+    {
+      capabilities: {},
+    },
+  );
+  const session = {
+    binaryPath,
+    client,
+    transport,
+    getStderr: () => stderrText,
+  };
 
-  child.on("exit", () => {
-    isClosed = true;
-    rejectPending(buildClosedError());
-  });
-
-  const send = (message) => {
-    if (!child.stdin.writable || isClosed) {
-      throw buildClosedError();
+  transport.onclose = () => {
+    if (sharedSessionState?.session === session) {
+      sharedSessionState = null;
     }
-
-    const payload = JSON.stringify(message);
-    child.stdin.write(`Content-Length: ${Buffer.byteLength(payload, "utf8")}\r\n\r\n${payload}`);
   };
 
-  const request = (method, params) =>
-    new Promise((resolve, reject) => {
-      const id = nextId++;
-      const timeout = setTimeout(() => {
-        pending.delete(id);
-        reject(new Error(`Timed out waiting for TaskTrace MCP method ${method}.`));
-      }, config.startupTimeoutMs);
+  await client.connect(transport, { timeout: config.startupTimeoutMs });
 
-      pending.set(id, { resolve, reject, timeout });
+  return session;
+}
 
-      try {
-        send({
-          jsonrpc: "2.0",
-          id,
-          method,
-          params,
-        });
-      } catch (error) {
-        clearTimeout(timeout);
-        pending.delete(id);
-        reject(error);
-      }
-    });
+function buildTaskTraceEnvironment() {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([, value]) => typeof value === "string"),
+  );
+}
 
-  const notify = (method, params) => {
-    send({
-      jsonrpc: "2.0",
-      method,
-      params,
-    });
-  };
+function shouldRetryTaskTraceError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+
+  return (
+    normalized.includes("timed out") ||
+    normalized.includes("closed") ||
+    normalized.includes("econnreset") ||
+    normalized.includes("broken pipe") ||
+    normalized.includes("epipe") ||
+    normalized.includes("sigabrt") ||
+    normalized.includes("spawn")
+  );
+}
+
+async function invalidateTaskTraceSession(session) {
+  if (sharedSessionState?.session === session) {
+    sharedSessionState = null;
+  }
 
   try {
-    await request("initialize", {
-      protocolVersion: MCP_PROTOCOL_VERSION,
-      capabilities: {},
-      clientInfo: {
-        name: "TaskTraceMCPPlugin",
-        version: PLUGIN_VERSION,
-      },
-    });
-    notify("notifications/initialized", {});
+    await session.client.close();
+  } catch {}
 
-    return await run({ request, binaryPath });
-  } finally {
-    try {
-      if (!isClosed) {
-        await request("shutdown", {});
-      }
-    } catch {}
+  try {
+    await session.transport.close();
+  } catch {}
+}
 
-    try {
-      if (!isClosed) {
-        notify("exit", {});
-      }
-    } catch {}
+function wrapTaskTraceError(error, session) {
+  const stderr = typeof session?.getStderr === "function" ? session.getStderr().trim() : "";
+  const message = error instanceof Error ? error.message : String(error);
 
-    child.kill();
-  }
+  return new Error(
+    stderr.length > 0
+      ? `${message}\n\nTaskTrace stderr:\n${stderr}`
+      : message,
+  );
 }
 
 async function resolveTaskTraceBinary(configuredPath) {

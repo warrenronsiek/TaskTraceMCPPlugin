@@ -74,22 +74,25 @@ Install from ClawHub:
 
 ```bash
 openclaw plugins install tasktrace-mcp-plugin
-openclaw plugins info tasktrace-mcp-plugin
+openclaw config set tools.profile '"full"' --strict-json
+openclaw gateway restart
+openclaw plugins inspect tasktrace-mcp-plugin
 ```
 
-Or install directly from the GitHub repo (tracks latest commit, no version pinning):
+Or install directly from a local checkout of this repo:
 
 ```bash
-openclaw plugins install tasktrace-mcp-plugin --marketplace warrenronsiek/TaskTraceMCPPlugin
+cd ~/Projects/TaskTraceMCPPlugin
+openclaw plugins install .
+openclaw config set tools.profile '"full"' --strict-json
+openclaw gateway restart
+openclaw plugins inspect tasktrace-mcp-plugin
 ```
 
 Optional OpenClaw config:
 
 ```json
 {
-  "tools": {
-    "allow": ["tasktrace-mcp-plugin"]
-  },
   "plugins": {
     "entries": {
       "tasktrace-mcp-plugin": {
@@ -170,8 +173,9 @@ npm pack
 5. Smoke test the generated archive with OpenClaw:
 
 ```bash
-openclaw plugins install ./tasktrace-mcp-plugin-<version>.tgz
-openclaw plugins info tasktrace-mcp-plugin
+openclaw plugins install .
+openclaw gateway restart
+openclaw plugins inspect tasktrace-mcp-plugin
 ```
 
 6. Smoke test the Claude plugin layout locally:
@@ -179,32 +183,3 @@ openclaw plugins info tasktrace-mcp-plugin
 ```bash
 claude --plugin-dir .
 ```
-
-7. Publish through the intended distribution channel.
-
-Current practical guidance:
-
-- for OpenClaw, install from ClawHub (`openclaw plugins install tasktrace-mcp-plugin`) or directly from the GitHub repo
-- for Claude, direct MCP registration or local plugin layout from a clone
-
-## CircleCI Release Flow
-
-This repo includes a CircleCI release pipeline in `.circleci/config.yml`:
-
-1. fetch full git history and tags
-2. run `semantic-release`
-3. stop cleanly when there is no release
-4. sync manifest versions with `versionUpdate.mjs` and build the tarball (`npm pack`)
-5. commit version-bumped files back to the branch and push the release tag
-
-The `.tgz` is stored as a CircleCI artifact and manually uploaded to ClawHub to publish a versioned release there.
-
-Branch behavior matches TaskTrace:
-
-- `master`: stable releases
-- `dev`: prereleases
-
-The CI job derives the npm dist-tag from the release version:
-
-- stable versions publish with `latest`
-- prereleases publish with the prerelease identifier, for example `dev`
