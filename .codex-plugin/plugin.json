@@ -34,8 +34,8 @@
     "defaultPrompt": [
       "Use TaskTrace to inspect recent work history and activity for this project"
     ],
-    "composerIcon": "../../assets/favicon-192x192.png",
-    "logo": "../../assets/tasktrace-logo-black-bg.svg",
+    "composerIcon": "./assets/favicon-192x192.png",
+    "logo": "./assets/tasktrace-logo-black-bg.svg",
     "screenshots": [],
     "brandColor": "#111111"
   }

@@ -8,7 +8,7 @@
       "name": "tasktrace-mcp-plugin",
       "source": {
         "source": "local",
-        "path": "./plugins/tasktrace-mcp-plugin"
+        "path": "~/.codex/plugins/tasktrace-mcp-plugin"
       },
       "policy": {
         "installation": "AVAILABLE",

@@ -35,14 +35,14 @@ The server itself is still the TaskTrace desktop app. Every client path here lau
 - `.cursor-plugin/plugin.json`
   Cursor-compatible plugin marker.
 
-- `plugins/tasktrace-mcp-plugin/.codex-plugin/plugin.json`
+- `.codex-plugin/plugin.json`
   Codex plugin manifest that registers TaskTrace as an MCP server.
 
-- `plugins/tasktrace-mcp-plugin/.mcp.json`
-  Plugin-local MCP server wiring for Codex.
+- `.codex-plugin/marketplace.json`
+  Reference marketplace entry for a home-local Codex install.
 
 - `.mcp.json`
-  Reusable project-scope MCP config in standard `mcpServers` format.
+  Reusable MCP server config in standard `mcpServers` format, including the Codex plugin install.
 
 - `scripts/set-version.mjs`
   Semver-backed helper that validates a version and syncs it across package metadata and manifests.
@@ -130,19 +130,25 @@ claude mcp add --transport stdio --scope project tasktrace -- /Applications/Task
 
 ### Codex
 
-Use the repo-local plugin entry:
+Install the plugin locally on your machine:
 
-```text
-.agents/plugins/marketplace.json
+```bash
+npm run install:codex-local
 ```
 
-The TaskTrace plugin lives at:
+That command copies the Codex plugin bundle into:
 
 ```text
-plugins/tasktrace-mcp-plugin
+~/.codex/plugins/tasktrace-mcp-plugin
 ```
 
-It registers the same local stdio server:
+and creates or updates:
+
+```text
+~/.agents/plugins/marketplace.json
+```
+
+The installed bundle includes `.codex-plugin/plugin.json`, `.mcp.json`, and the required `assets/` files. It registers the same local stdio server:
 
 ```bash
 /Applications/TaskTrace.app/Contents/MacOS/TaskTrace --mcp-stdio
@@ -178,7 +184,7 @@ The same script also writes `.release-version.env` for CI with:
 
 ## Deploying changes
 
-1. Update `index.js`, `openclaw.plugin.json`, `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `plugins/tasktrace-mcp-plugin/.codex-plugin/plugin.json`, `plugins/tasktrace-mcp-plugin/.mcp.json`, `.mcp.json`, and this README as needed.
+1. Update `index.js`, `openclaw.plugin.json`, `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.codex-plugin/marketplace.json`, `.mcp.json`, and this README as needed.
 2. Install dependencies:
 
 ```bash

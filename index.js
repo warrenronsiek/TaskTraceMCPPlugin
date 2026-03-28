@@ -177,6 +177,80 @@ const plugin = {
         };
       },
     });
+
+    api.registerTool({
+      name: "tasktrace_search",
+      label: "TaskTrace Search",
+      description:
+        "Expose activity search over TaskTrace data, returning ranked relevant descriptions of matching overviews, activities, and screenshots without generating a summary.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "Natural-language query to search over TaskTrace overviews, activity summaries, and screenshot descriptions.",
+          },
+          limit: {
+            type: "number",
+            description:
+              "Optional maximum number of ranked overview result trees to return. Defaults to 10 and is clamped by TaskTrace to 50.",
+          },
+        },
+        required: ["query"],
+      },
+      async execute(_toolCallId, params) {
+        const payload = await withTaskTraceClient(resolveConfig(), async ({ client, binaryPath, requestOptions }) => {
+          const result = await client.callTool(
+            {
+              name: "tasktrace_search",
+              arguments: {
+                query: params.query,
+                ...(typeof params.limit === "number" ? { limit: params.limit } : {}),
+              },
+            },
+            requestOptions,
+          );
+
+          return {
+            binaryPath,
+            query: params.query,
+            limit: typeof params.limit === "number" ? params.limit : null,
+            content: Array.isArray(result?.content) ? result.content : [],
+            isError: result?.isError === true,
+          };
+        });
+
+        const content = payload.content.flatMap((entry) => {
+          if (typeof entry?.text === "string") {
+            return [{ type: "text", text: entry.text }];
+          }
+
+          return [
+            {
+              type: "text",
+              text: JSON.stringify(entry ?? null, null, 2),
+            },
+          ];
+        });
+
+        const details = {
+          binaryPath: payload.binaryPath,
+          query: payload.query,
+          limit: payload.limit,
+          isError: payload.isError,
+        };
+
+        return {
+          content:
+            content.length > 0
+              ? content
+              : [{ type: "text", text: `TaskTrace search returned no content for query ${JSON.stringify(params.query)}.` }],
+          details,
+        };
+      },
+    });
   },
 };
 
