@@ -8,6 +8,7 @@ It currently includes packaging for:
 
 - OpenClaw native plugins
 - Claude Code local plugins
+- Codex local plugins
 - Cursor-compatible bundle metadata
 - generic `.mcp.json` stdio server wiring
 
@@ -33,6 +34,12 @@ The server itself is still the TaskTrace desktop app. Every client path here lau
 
 - `.cursor-plugin/plugin.json`
   Cursor-compatible plugin marker.
+
+- `plugins/tasktrace-mcp-plugin/.codex-plugin/plugin.json`
+  Codex plugin manifest that registers TaskTrace as an MCP server.
+
+- `plugins/tasktrace-mcp-plugin/.mcp.json`
+  Plugin-local MCP server wiring for Codex.
 
 - `.mcp.json`
   Reusable project-scope MCP config in standard `mcpServers` format.
@@ -121,6 +128,26 @@ Or register the MCP server directly:
 claude mcp add --transport stdio --scope project tasktrace -- /Applications/TaskTrace.app/Contents/MacOS/TaskTrace --mcp-stdio
 ```
 
+### Codex
+
+Use the repo-local plugin entry:
+
+```text
+.agents/plugins/marketplace.json
+```
+
+The TaskTrace plugin lives at:
+
+```text
+plugins/tasktrace-mcp-plugin
+```
+
+It registers the same local stdio server:
+
+```bash
+/Applications/TaskTrace.app/Contents/MacOS/TaskTrace --mcp-stdio
+```
+
 ### Generic `.mcp.json`
 
 Use the included `.mcp.json` as a starting point for clients that support project-scoped MCP server config files.
@@ -151,7 +178,7 @@ The same script also writes `.release-version.env` for CI with:
 
 ## Deploying changes
 
-1. Update `index.js`, `openclaw.plugin.json`, `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `.mcp.json`, and this README as needed.
+1. Update `index.js`, `openclaw.plugin.json`, `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `plugins/tasktrace-mcp-plugin/.codex-plugin/plugin.json`, `plugins/tasktrace-mcp-plugin/.mcp.json`, `.mcp.json`, and this README as needed.
 2. Install dependencies:
 
 ```bash

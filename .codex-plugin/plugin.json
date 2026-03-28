@@ -1,0 +1,42 @@
+{
+  "name": "tasktrace-mcp-plugin",
+  "version": "1.5.0",
+  "description": "Connects the local TaskTrace desktop app to Codex as an MCP server, exposing your work history, activity feeds, and screenshots.",
+  "author": {
+    "name": "TaskTrace",
+    "email": "support@tasktrace.com",
+    "url": "https://tasktrace.com/"
+  },
+  "homepage": "https://tasktrace.com/docs",
+  "repository": "https://github.com/warrenronsiek/TaskTraceMCPPlugin",
+  "license": "MIT",
+  "keywords": [
+    "tasktrace",
+    "mcp",
+    "activity",
+    "productivity",
+    "screen-recording"
+  ],
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "TaskTrace",
+    "shortDescription": "Connect TaskTrace desktop activity and history to Codex",
+    "longDescription": "Registers the local TaskTrace desktop app as an MCP server for Codex so you can inspect work history, activity feeds, screenshots, and related TaskTrace resources directly from the agent.",
+    "developerName": "TaskTrace",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read"
+    ],
+    "websiteURL": "https://tasktrace.com/docs",
+    "privacyPolicyURL": "https://tasktrace.com/privacy",
+    "termsOfServiceURL": "https://tasktrace.com/terms",
+    "defaultPrompt": [
+      "Use TaskTrace to inspect recent work history and activity for this project"
+    ],
+    "composerIcon": "../../assets/favicon-192x192.png",
+    "logo": "../../assets/tasktrace-logo-black-bg.svg",
+    "screenshots": [],
+    "brandColor": "#111111"
+  }
+}

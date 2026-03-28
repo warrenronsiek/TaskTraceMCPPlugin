@@ -14,11 +14,14 @@
     }
   },
   "files": [
+    "assets",
     "index.js",
     "openclaw.plugin.json",
     ".claude-plugin",
     ".cursor-plugin",
+    ".agents",
     ".mcp.json",
+    "plugins",
     "README.md",
     "scripts",
     "versionUpdate.mjs"
