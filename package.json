@@ -1,6 +1,6 @@
 {
   "name": "tasktrace-mcp",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "TaskTrace MCP integration package for OpenClaw, Claude Code, and Cursor-compatible bundles.",
   "type": "module",
   "license": "MIT",
