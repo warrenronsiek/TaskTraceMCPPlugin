@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
 
-const pluginName = "tasktrace-mcp-plugin";
+const pluginName = "tasktrace-mcp";
 const localMarketplaceName = "local-plugins";
 const sourcePluginDir = repoRoot;
 const marketplaceRootDir = path.join(os.homedir(), ".agents", "plugins");
@@ -146,7 +146,7 @@ async function main() {
     "Removed any legacy or cached TaskTrace Codex plugin copies so the next Local Plugins install uses the latest staged bundle.",
   );
   console.log(
-    "Restart Codex, verify the plugin appears in the local marketplace, then install tasktrace-mcp-plugin from Local Plugins.",
+    "Restart Codex, verify the plugin appears in the local marketplace, then install tasktrace-mcp from Local Plugins.",
   );
 }
 

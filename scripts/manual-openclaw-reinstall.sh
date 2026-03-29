@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
 
-openclaw plugins uninstall tasktrace-mcp-plugin
-rm -rf ~/.openclaw/extensions/tasktrace-mcp-plugin
+openclaw plugins uninstall tasktrace-mcp
+rm -rf ~/.openclaw/extensions/tasktrace-mcp
 openclaw plugins install .

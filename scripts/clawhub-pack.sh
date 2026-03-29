@@ -7,7 +7,7 @@ set -euo pipefail
 VERSION="${1:?Usage: clawhub-pack.sh <version>}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST_DIR="$REPO_ROOT/dist"
-ZIPFILE="$DIST_DIR/tasktrace-mcp-plugin-${VERSION}.zip"
+ZIPFILE="$DIST_DIR/tasktrace-mcp-${VERSION}.zip"
 
 mkdir -p "$DIST_DIR"
 TMP="$(mktemp -d)"

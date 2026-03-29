@@ -1,5 +1,5 @@
 {
-  "name": "tasktrace-mcp-plugin",
+  "name": "tasktrace-mcp",
   "version": "1.7.0",
   "description": "TaskTrace MCP integration package for OpenClaw, Claude Code, and Cursor-compatible bundles.",
   "type": "module",

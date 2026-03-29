@@ -23,7 +23,7 @@ const distTag = semver.prerelease(nextVersion)?.[0] ?? "latest";
 const releaseMetadata = [
   `RELEASE_VERSION=${nextVersion}`,
   `NPM_DIST_TAG=${distTag}`,
-  `PACKAGE_TARBALL=tasktrace-mcp-plugin-${nextVersion}.tgz`,
+  `PACKAGE_TARBALL=tasktrace-mcp-${nextVersion}.tgz`,
 ].join("\n") + "\n";
 
 await writeFile(new URL("./.release-version.env", import.meta.url), releaseMetadata);

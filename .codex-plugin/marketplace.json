@@ -5,10 +5,10 @@
   },
   "plugins": [
     {
-      "name": "tasktrace-mcp-plugin",
+      "name": "tasktrace-mcp",
       "source": {
         "source": "local",
-        "path": "./.codex/plugins/tasktrace-mcp-plugin"
+        "path": "./.codex/plugins/tasktrace-mcp"
       },
       "policy": {
         "installation": "AVAILABLE",

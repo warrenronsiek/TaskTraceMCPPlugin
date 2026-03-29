@@ -57,8 +57,8 @@ The server itself is still the TaskTrace desktop app. Every client path here lau
 What was verified locally on March 22, 2026:
 
 - `openclaw plugins install .` succeeded on `OpenClaw 2026.3.13`
-- `openclaw plugins inspect tasktrace-mcp-plugin` showed the bundle was discovered and enabled
-- `npm pack` produced a working install artifact and `openclaw plugins install ./tasktrace-mcp-plugin-0.1.0.tgz` also succeeded
+- `openclaw plugins inspect tasktrace-mcp` showed the bundle was discovered and enabled
+- `npm pack` produced a working install artifact and `openclaw plugins install ./tasktrace-mcp-0.1.0.tgz` also succeeded
 - `claude --plugin-dir . --version` accepted the local plugin layout
 
 What still needs product-level QA on a normal TaskTrace machine:
@@ -81,7 +81,7 @@ openclaw plugins install .
 openclaw config set tools.profile '"full"' --strict-json
 openclaw gateway restart
 openclaw plugins list
-openclaw plugins inspect tasktrace-mcp-plugin
+openclaw plugins inspect tasktrace-mcp
 ```
 
 Install from the packed archive instead:
@@ -90,9 +90,9 @@ Install from the packed archive instead:
 git clone https://github.com/warrenronsiek/TaskTraceMCPPlugin.git
 cd TaskTraceMCPPlugin
 npm pack
-openclaw plugins install ./tasktrace-mcp-plugin-$(node -p 'require("./package.json").version').tgz
+openclaw plugins install ./tasktrace-mcp-$(node -p 'require("./package.json").version').tgz
 openclaw gateway restart
-openclaw plugins inspect tasktrace-mcp-plugin
+openclaw plugins inspect tasktrace-mcp
 ```
 
 OpenClaw should report this install as a compatible bundle, not a native runtime plugin. The bundled MCP server configuration comes from `.claude-plugin/plugin.json` / `.codex-plugin/plugin.json` and `.mcp.json`.
@@ -100,7 +100,7 @@ OpenClaw should report this install as a compatible bundle, not a native runtime
 ClawHub install is currently not available:
 
 ```text
-openclaw plugins install tasktrace-mcp-plugin
+openclaw plugins install tasktrace-mcp
 ```
 
 ClawHub is currently broken for this plugin path: https://github.com/openclaw/clawhub/issues/1088
@@ -111,7 +111,7 @@ Install via the plugin marketplace (automatically registers the MCP server):
 
 ```bash
 /plugin marketplace add warrenronsiek/TaskTraceMCPPlugin
-/plugin install tasktrace-mcp-plugin@tasktrace-mcp
+/plugin install tasktrace-mcp@tasktrace-mcp
 ```
 
 Or register the MCP server directly:
@@ -134,7 +134,7 @@ Then:
 ```text
 1. Restart Codex.
 2. Open the local marketplace.
-3. Install `tasktrace-mcp-plugin`.
+3. Install `tasktrace-mcp`.
 ```
 
 If you want to restage and reinstall from a fresh local checkout:
@@ -149,14 +149,14 @@ npm run install:codex-local
 That command is idempotent. Each run:
 
 - refreshes the staged plugin source bundle under the local Codex marketplace root
-- removes the old legacy `~/.codex/plugins/tasktrace-mcp-plugin` location used by earlier installer versions
+- removes the old legacy `~/.codex/plugins/tasktrace-mcp` location used by earlier installer versions
 - removes any cached installed copy for this plugin under `~/.codex/plugins/cache/...` so the next install uses the latest staged files
 - creates or updates the local marketplace entry
 
 The staged source bundle lives at:
 
 ```text
-~/.agents/plugins/.codex/plugins/tasktrace-mcp-plugin
+~/.agents/plugins/.codex/plugins/tasktrace-mcp
 ```
 
 and creates or updates:
@@ -168,7 +168,7 @@ and creates or updates:
 with a marketplace entry whose `source.path` is the documented marketplace-root-relative path:
 
 ```json
-"./.codex/plugins/tasktrace-mcp-plugin"
+"./.codex/plugins/tasktrace-mcp"
 ```
 
 Codex then creates the actual installed copy under its plugin cache. If the plugin was previously installed, the installer will already have removed the stale cached copy so this install behaves like a clean reinstall. The staged source bundle includes `.codex-plugin/plugin.json`, `.mcp.json`, and the required `assets/` files, and registers the same local stdio server:
@@ -231,7 +231,7 @@ npm pack
 ```bash
 openclaw plugins install .
 openclaw gateway restart
-openclaw plugins inspect tasktrace-mcp-plugin
+openclaw plugins inspect tasktrace-mcp
 ```
 
 Confirm the plugin is reported as a bundle and that its bundled MCP server is present.

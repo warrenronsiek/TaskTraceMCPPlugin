@@ -1,5 +1,5 @@
 {
-  "name": "tasktrace-mcp-plugin",
+  "name": "tasktrace-mcp",
   "description": "Connects the local TaskTrace desktop app to Claude Code as an MCP server, exposing your work history, activity feeds, and screenshots.",
   "version": "1.7.0",
   "author": {
