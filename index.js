@@ -1,21 +1,12 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-
-const execFileAsync = promisify(execFile);
-
-const PLUGIN_ID = "tasktrace-mcp-plugin";
 const PLUGIN_VERSION = "1.5.0";
-const DEFAULT_TASKTRACE_APP_PATH = "/Applications/TaskTrace.app";
-const DEFAULT_STARTUP_TIMEOUT_MS = 10000;
-const TASKTRACE_BUNDLE_ID = "com.tasktrace.TaskTrace";
-const TASKTRACE_MCP_ARGUMENT = "--mcp-stdio";
+const TASK_TRACE_BINARY_PATH = "/Applications/TaskTrace.app/Contents/MacOS/TaskTrace";
 
 let sharedSessionState = null;
 
 const plugin = {
-  id: PLUGIN_ID,
+  id: "tasktrace-mcp-plugin",
   name: "TaskTrace MCP Plugin",
   description: "Proxy TaskTrace MCP resources into OpenClaw tools.",
   configSchema: {
@@ -35,23 +26,6 @@ const plugin = {
     },
   },
   register(api) {
-    const resolveConfig = () => {
-      const raw = api.pluginConfig && typeof api.pluginConfig === "object" ? api.pluginConfig : {};
-      const tasktracePath =
-        typeof raw.tasktracePath === "string" && raw.tasktracePath.trim().length > 0
-          ? raw.tasktracePath.trim()
-          : "";
-      const startupTimeoutMs =
-        typeof raw.startupTimeoutMs === "number" &&
-        Number.isFinite(raw.startupTimeoutMs) &&
-        raw.startupTimeoutMs >= 1000 &&
-        raw.startupTimeoutMs <= 30000
-          ? raw.startupTimeoutMs
-          : DEFAULT_STARTUP_TIMEOUT_MS;
-
-      return { tasktracePath, startupTimeoutMs };
-    };
-
     api.registerTool({
       name: "tasktrace_list_resources",
       label: "TaskTrace List Resources",
@@ -63,12 +37,12 @@ const plugin = {
         properties: {},
       },
       async execute() {
-        const payload = await withTaskTraceClient(resolveConfig(), async ({ client, binaryPath, requestOptions }) => {
+        const payload = await withTaskTraceClient(api.pluginConfig, async ({ client, requestOptions }) => {
           const resources = await client.listResources(undefined, requestOptions);
           const templates = await client.listResourceTemplates(undefined, requestOptions);
 
           return {
-            binaryPath,
+            binaryPath: TASK_TRACE_BINARY_PATH,
             resources: Array.isArray(resources?.resources) ? resources.resources : [],
             templates: Array.isArray(templates?.resourceTemplates)
               ? templates.resourceTemplates
@@ -103,11 +77,11 @@ const plugin = {
         required: ["uri"],
       },
       async execute(_toolCallId, params) {
-        const payload = await withTaskTraceClient(resolveConfig(), async ({ client, binaryPath, requestOptions }) => {
+        const payload = await withTaskTraceClient(api.pluginConfig, async ({ client, requestOptions }) => {
           const result = await client.readResource({ uri: params.uri }, requestOptions);
 
           return {
-            binaryPath,
+            binaryPath: TASK_TRACE_BINARY_PATH,
             uri: params.uri,
             contents: Array.isArray(result?.contents) ? result.contents : [],
           };
@@ -201,7 +175,7 @@ const plugin = {
         required: ["query"],
       },
       async execute(_toolCallId, params) {
-        const payload = await withTaskTraceClient(resolveConfig(), async ({ client, binaryPath, requestOptions }) => {
+        const payload = await withTaskTraceClient(api.pluginConfig, async ({ client, binaryPath, requestOptions }) => {
           const result = await client.callTool(
             {
               name: "tasktrace_search",
@@ -263,7 +237,6 @@ async function withTaskTraceClient(config, run) {
     try {
       return await run({
         client: session.client,
-        binaryPath: session.binaryPath,
         requestOptions: { timeout: config.startupTimeoutMs },
       });
     } catch (error) {
@@ -281,18 +254,16 @@ async function withTaskTraceClient(config, run) {
 }
 
 async function getTaskTraceSession(config) {
-  const binaryPath = await resolveTaskTraceBinary(config.tasktracePath);
 
-  if (sharedSessionState?.binaryPath === binaryPath) {
+  if (sharedSessionState.promise) {
     return sharedSessionState.promise;
   }
 
   const state = {
-    binaryPath,
     promise: null,
     session: null,
   };
-  const sessionPromise = createTaskTraceSession(binaryPath, config)
+  const sessionPromise = createTaskTraceSession(config)
     .then((session) => {
       if (sharedSessionState === state) {
         sharedSessionState.session = session;
@@ -312,11 +283,10 @@ async function getTaskTraceSession(config) {
   return sessionPromise;
 }
 
-async function createTaskTraceSession(binaryPath, config) {
+async function createTaskTraceSession(config) {
   const transport = new StdioClientTransport({
-    command: binaryPath,
-    args: [TASKTRACE_MCP_ARGUMENT],
-    env: buildTaskTraceEnvironment(),
+    command: TASK_TRACE_BINARY_PATH,
+    args: ["--mcp-stdio"],
     stderr: "pipe",
   });
   let stderrText = "";
@@ -350,12 +320,6 @@ async function createTaskTraceSession(binaryPath, config) {
   await client.connect(transport, { timeout: config.startupTimeoutMs });
 
   return session;
-}
-
-function buildTaskTraceEnvironment() {
-  return Object.fromEntries(
-    Object.entries(process.env).filter(([, value]) => typeof value === "string"),
-  );
 }
 
 function shouldRetryTaskTraceError(error) {
@@ -396,45 +360,6 @@ function wrapTaskTraceError(error, session) {
       ? `${message}\n\nTaskTrace stderr:\n${stderr}`
       : message,
   );
-}
-
-async function resolveTaskTraceBinary(configuredPath) {
-  const candidates = [
-    configuredPath,
-    typeof process.env.TASKTRACE_APP_PATH === "string" ? process.env.TASKTRACE_APP_PATH : "",
-    await findInstalledTaskTraceAppPath(),
-    DEFAULT_TASKTRACE_APP_PATH,
-  ].filter((value) => typeof value === "string" && value.trim().length > 0);
-
-  for (const candidate of candidates) {
-    const trimmed = candidate.trim();
-    if (trimmed.endsWith("/Contents/MacOS/TaskTrace")) {
-      return trimmed;
-    }
-
-    if (trimmed.endsWith(".app")) {
-      return `${trimmed}/Contents/MacOS/TaskTrace`;
-    }
-
-    return trimmed;
-  }
-
-  return `${DEFAULT_TASKTRACE_APP_PATH}/Contents/MacOS/TaskTrace`;
-}
-
-async function findInstalledTaskTraceAppPath() {
-  try {
-    const { stdout } = await execFileAsync("mdfind", [`kMDItemCFBundleIdentifier == '${TASKTRACE_BUNDLE_ID}'`], {
-      timeout: 2000,
-    });
-
-    return stdout
-      .split("\n")
-      .map((line) => line.trim())
-      .find((line) => line.length > 0);
-  } catch {
-    return "";
-  }
 }
 
 export default plugin;

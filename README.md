@@ -79,17 +79,14 @@ What still needs product-level QA on a normal TaskTrace machine:
 
 Install from ClawHub:
 
-```bash
-openclaw plugins install tasktrace-mcp-plugin
-openclaw config set tools.profile '"full"' --strict-json
-openclaw gateway restart
-openclaw plugins inspect tasktrace-mcp-plugin
-```
+~~openclaw plugins install tasktrace-mcp-plugin~~
+Clawhub isn't working - https://github.com/openclaw/clawhub/issues/1088
 
 Or install directly from a local checkout of this repo:
 
 ```bash
-cd ~/Projects/TaskTraceMCPPlugin
+git clone https://github.com/warrenronsiek/TaskTraceMCPPlugin.git
+cd TaskTraceMCPPlugin
 openclaw plugins install .
 openclaw config set tools.profile '"full"' --strict-json
 openclaw gateway restart
@@ -136,10 +133,17 @@ Install the plugin locally on your machine:
 npm run install:codex-local
 ```
 
-That command copies the Codex plugin bundle into:
+That command is idempotent. Each run:
+
+- refreshes the staged plugin source bundle under the local Codex marketplace root
+- removes the old legacy `~/.codex/plugins/tasktrace-mcp-plugin` location used by earlier installer versions
+- removes any cached installed copy for this plugin under `~/.codex/plugins/cache/...` so the next install uses the latest staged files
+- creates or updates the local marketplace entry
+
+The staged source bundle lives at:
 
 ```text
-~/.codex/plugins/tasktrace-mcp-plugin
+~/.agents/plugins/.codex/plugins/tasktrace-mcp-plugin
 ```
 
 and creates or updates:
@@ -148,7 +152,19 @@ and creates or updates:
 ~/.agents/plugins/marketplace.json
 ```
 
-The installed bundle includes `.codex-plugin/plugin.json`, `.mcp.json`, and the required `assets/` files. It registers the same local stdio server:
+with a marketplace entry whose `source.path` is the documented marketplace-root-relative path:
+
+```json
+"./.codex/plugins/tasktrace-mcp-plugin"
+```
+
+After running the installer:
+
+1. Restart Codex.
+2. Confirm the plugin appears in the local marketplace.
+3. Install `tasktrace-mcp-plugin` from that marketplace.
+
+Codex then creates the actual installed copy under its plugin cache. If the plugin was previously installed, the installer will already have removed the stale cached copy so this install behaves like a clean reinstall. The staged source bundle includes `.codex-plugin/plugin.json`, `.mcp.json`, and the required `assets/` files, and registers the same local stdio server:
 
 ```bash
 /Applications/TaskTrace.app/Contents/MacOS/TaskTrace --mcp-stdio
