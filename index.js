@@ -1,9 +1,20 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
 const PLUGIN_VERSION = "1.5.0";
-const TASK_TRACE_BINARY_PATH = "/Applications/TaskTrace.app/Contents/MacOS/TaskTrace";
+const DEFAULT_TASK_TRACE_BINARY_PATH = "/Applications/TaskTrace.app/Contents/MacOS/TaskTrace";
+const DEFAULT_STARTUP_TIMEOUT_MS = 10000;
 
 let sharedSessionState = null;
+const defaultRuntimeDependencies = {
+  createClient(clientInfo, options) {
+    return new Client(clientInfo, options);
+  },
+  createTransport(options) {
+    return new StdioClientTransport(options);
+  },
+};
+const runtimeDependencies = { ...defaultRuntimeDependencies };
 
 const plugin = {
   id: "tasktrace-mcp-plugin",
@@ -37,12 +48,12 @@ const plugin = {
         properties: {},
       },
       async execute() {
-        const payload = await withTaskTraceClient(api.pluginConfig, async ({ client, requestOptions }) => {
+        const payload = await withTaskTraceClient(api.pluginConfig, async ({ client, binaryPath, requestOptions }) => {
           const resources = await client.listResources(undefined, requestOptions);
           const templates = await client.listResourceTemplates(undefined, requestOptions);
 
           return {
-            binaryPath: TASK_TRACE_BINARY_PATH,
+            binaryPath,
             resources: Array.isArray(resources?.resources) ? resources.resources : [],
             templates: Array.isArray(templates?.resourceTemplates)
               ? templates.resourceTemplates
@@ -77,11 +88,11 @@ const plugin = {
         required: ["uri"],
       },
       async execute(_toolCallId, params) {
-        const payload = await withTaskTraceClient(api.pluginConfig, async ({ client, requestOptions }) => {
+        const payload = await withTaskTraceClient(api.pluginConfig, async ({ client, binaryPath, requestOptions }) => {
           const result = await client.readResource({ uri: params.uri }, requestOptions);
 
           return {
-            binaryPath: TASK_TRACE_BINARY_PATH,
+            binaryPath,
             uri: params.uri,
             contents: Array.isArray(result?.contents) ? result.contents : [],
           };
@@ -229,6 +240,7 @@ const plugin = {
 };
 
 async function withTaskTraceClient(config, run) {
+  const startupTimeoutMs = config?.startupTimeoutMs ?? DEFAULT_STARTUP_TIMEOUT_MS;
   let lastError;
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -237,7 +249,8 @@ async function withTaskTraceClient(config, run) {
     try {
       return await run({
         client: session.client,
-        requestOptions: { timeout: config.startupTimeoutMs },
+        binaryPath: session.binaryPath,
+        requestOptions: { timeout: startupTimeoutMs },
       });
     } catch (error) {
       lastError = error;
@@ -254,12 +267,12 @@ async function withTaskTraceClient(config, run) {
 }
 
 async function getTaskTraceSession(config) {
-
-  if (sharedSessionState.promise) {
+  if (sharedSessionState?.promise) {
     return sharedSessionState.promise;
   }
 
   const state = {
+    binaryPath: config?.tasktracePath ?? DEFAULT_TASK_TRACE_BINARY_PATH,
     promise: null,
     session: null,
   };
@@ -284,8 +297,10 @@ async function getTaskTraceSession(config) {
 }
 
 async function createTaskTraceSession(config) {
-  const transport = new StdioClientTransport({
-    command: TASK_TRACE_BINARY_PATH,
+  const binaryPath = config?.tasktracePath ?? DEFAULT_TASK_TRACE_BINARY_PATH;
+  const startupTimeoutMs = config?.startupTimeoutMs ?? DEFAULT_STARTUP_TIMEOUT_MS;
+  const transport = runtimeDependencies.createTransport({
+    command: binaryPath,
     args: ["--mcp-stdio"],
     stderr: "pipe",
   });
@@ -295,7 +310,7 @@ async function createTaskTraceSession(config) {
     stderrText = `${stderrText}${chunk.toString("utf8")}`.slice(-8000);
   });
 
-  const client = new Client(
+  const client = runtimeDependencies.createClient(
     {
       name: "TaskTraceMCPPlugin",
       version: PLUGIN_VERSION,
@@ -317,7 +332,7 @@ async function createTaskTraceSession(config) {
     }
   };
 
-  await client.connect(transport, { timeout: config.startupTimeoutMs });
+  await client.connect(transport, { timeout: startupTimeoutMs });
 
   return session;
 }
@@ -361,5 +376,16 @@ function wrapTaskTraceError(error, session) {
       : message,
   );
 }
+
+export const __testHooks = {
+  reset() {
+    sharedSessionState = null;
+    Object.assign(runtimeDependencies, defaultRuntimeDependencies);
+  },
+  setRuntimeDependencies(overrides) {
+    Object.assign(runtimeDependencies, overrides);
+  },
+  withTaskTraceClient,
+};
 
 export default plugin;

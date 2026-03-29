@@ -31,6 +31,7 @@
     "install:codex-local": "node ./scripts/install-codex-plugin.mjs",
     "pack": "bash scripts/clawhub-pack.sh \"$(node -p 'require(\"./package.json\").version')\"",
     "set-version": "node ./versionUpdate.mjs",
+    "test": "node --test",
     "semantic-release": "semantic-release"
   },
   "dependencies": {
