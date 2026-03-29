@@ -6,7 +6,7 @@ Full documentation — resources, tools, installation, and configuration — is 
 
 It currently includes packaging for:
 
-- OpenClaw native plugins
+- OpenClaw compatible bundles
 - Claude Code local plugins
 - Codex local plugins
 - Cursor-compatible bundle metadata
@@ -20,14 +20,8 @@ The server itself is still the TaskTrace desktop app. Every client path here lau
 
 ## Repository layout
 
-- `index.js`
-  Native OpenClaw plugin runtime that proxies TaskTrace MCP resources into OpenClaw tools.
-
-- `openclaw.plugin.json`
-  Native OpenClaw manifest.
-
 - `package.json`
-  Package metadata for local install, `npm pack`, and publication.
+  Package metadata for local install, `npm pack`, and publication. This repo intentionally does not expose a native OpenClaw runtime entrypoint.
 
 - `.claude-plugin/plugin.json`
   Claude Code plugin manifest with inline `mcpServers` config.
@@ -63,13 +57,13 @@ The server itself is still the TaskTrace desktop app. Every client path here lau
 What was verified locally on March 22, 2026:
 
 - `openclaw plugins install .` succeeded on `OpenClaw 2026.3.13`
-- `openclaw plugins info tasktrace-mcp-plugin` showed the plugin loaded with `tasktrace_list_resources` and `tasktrace_read_resource`
+- `openclaw plugins inspect tasktrace-mcp-plugin` showed the bundle was discovered and enabled
 - `npm pack` produced a working install artifact and `openclaw plugins install ./tasktrace-mcp-plugin-0.1.0.tgz` also succeeded
 - `claude --plugin-dir . --version` accepted the local plugin layout
 
 What still needs product-level QA on a normal TaskTrace machine:
 
-- a full end-to-end OpenClaw resource read against a running MCP-enabled TaskTrace app
+- a full end-to-end OpenClaw embedded-agent turn using the bundled TaskTrace MCP server
 - a full end-to-end Claude plugin session using this standalone repo
 - runtime validation on a machine where TaskTrace launches cleanly from `/Applications`
 
@@ -77,44 +71,45 @@ What still needs product-level QA on a normal TaskTrace machine:
 
 ### OpenClaw
 
-Install from ClawHub:
-
-~~openclaw plugins install tasktrace-mcp-plugin~~
-Clawhub isn't working - https://github.com/openclaw/clawhub/issues/1088
-
-Or install directly from a local checkout of this repo:
+Install from a local checkout:
 
 ```bash
 git clone https://github.com/warrenronsiek/TaskTraceMCPPlugin.git
 cd TaskTraceMCPPlugin
+npm pack
 openclaw plugins install .
 openclaw config set tools.profile '"full"' --strict-json
+openclaw gateway restart
+openclaw plugins list
+openclaw plugins inspect tasktrace-mcp-plugin
+```
+
+Install from the packed archive instead:
+
+```bash
+git clone https://github.com/warrenronsiek/TaskTraceMCPPlugin.git
+cd TaskTraceMCPPlugin
+npm pack
+openclaw plugins install ./tasktrace-mcp-plugin-$(node -p 'require("./package.json").version').tgz
 openclaw gateway restart
 openclaw plugins inspect tasktrace-mcp-plugin
 ```
 
-Optional OpenClaw config:
+OpenClaw should report this install as a compatible bundle, not a native runtime plugin. The bundled MCP server configuration comes from `.claude-plugin/plugin.json` / `.codex-plugin/plugin.json` and `.mcp.json`.
 
-```json
-{
-  "plugins": {
-    "entries": {
-      "tasktrace-mcp-plugin": {
-        "config": {
-          "tasktracePath": "/Applications/TaskTrace.app",
-          "startupTimeoutMs": 10000
-        }
-      }
-    }
-  }
-}
+ClawHub install is currently not available:
+
+```text
+openclaw plugins install tasktrace-mcp-plugin
 ```
+
+ClawHub is currently broken for this plugin path: https://github.com/openclaw/clawhub/issues/1088
 
 ### Claude Code
 
 Install via the plugin marketplace (automatically registers the MCP server):
 
-```text
+```bash
 /plugin marketplace add warrenronsiek/TaskTraceMCPPlugin
 /plugin install tasktrace-mcp-plugin@tasktrace-mcp
 ```
@@ -123,13 +118,31 @@ Or register the MCP server directly:
 
 ```bash
 claude mcp add --transport stdio --scope project tasktrace -- /Applications/TaskTrace.app/Contents/MacOS/TaskTrace --mcp-stdio
+claude mcp list
 ```
 
 ### Codex
 
-Install the plugin locally on your machine:
+Stage the plugin into the local Codex marketplace:
 
 ```bash
+npm run install:codex-local
+```
+
+Then:
+
+```text
+1. Restart Codex.
+2. Open the local marketplace.
+3. Install `tasktrace-mcp-plugin`.
+```
+
+If you want to restage and reinstall from a fresh local checkout:
+
+```bash
+git clone https://github.com/warrenronsiek/TaskTraceMCPPlugin.git
+cd TaskTraceMCPPlugin
+npm install
 npm run install:codex-local
 ```
 
@@ -158,12 +171,6 @@ with a marketplace entry whose `source.path` is the documented marketplace-root-
 "./.codex/plugins/tasktrace-mcp-plugin"
 ```
 
-After running the installer:
-
-1. Restart Codex.
-2. Confirm the plugin appears in the local marketplace.
-3. Install `tasktrace-mcp-plugin` from that marketplace.
-
 Codex then creates the actual installed copy under its plugin cache. If the plugin was previously installed, the installer will already have removed the stale cached copy so this install behaves like a clean reinstall. The staged source bundle includes `.codex-plugin/plugin.json`, `.mcp.json`, and the required `assets/` files, and registers the same local stdio server:
 
 ```bash
@@ -188,9 +195,9 @@ npm run set-version -- 0.1.1
 That command validates the input as semver and syncs:
 
 - `package.json`
+- `.codex-plugin/plugin.json`
 - `.claude-plugin/plugin.json`
 - `.cursor-plugin/plugin.json`
-- `index.js` `PLUGIN_VERSION`
 
 The same script also writes `.release-version.env` for CI with:
 
@@ -200,7 +207,7 @@ The same script also writes `.release-version.env` for CI with:
 
 ## Deploying changes
 
-1. Update `index.js`, `openclaw.plugin.json`, `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.codex-plugin/marketplace.json`, `.mcp.json`, and this README as needed.
+1. Update `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.codex-plugin/marketplace.json`, `.mcp.json`, and this README as needed.
 2. Install dependencies:
 
 ```bash
@@ -226,6 +233,8 @@ openclaw plugins install .
 openclaw gateway restart
 openclaw plugins inspect tasktrace-mcp-plugin
 ```
+
+Confirm the plugin is reported as a bundle and that its bundled MCP server is present.
 
 6. Smoke test the Claude plugin layout locally:
 

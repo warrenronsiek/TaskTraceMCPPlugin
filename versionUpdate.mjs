@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import semver from "semver";
 
 const nextVersion = process.argv[2];
@@ -16,21 +16,8 @@ const updateJsonVersion = async (path) => {
 
 await updateJsonVersion(new URL("./package.json", import.meta.url));
 await updateJsonVersion(new URL("./.claude-plugin/plugin.json", import.meta.url));
+await updateJsonVersion(new URL("./.codex-plugin/plugin.json", import.meta.url));
 await updateJsonVersion(new URL("./.cursor-plugin/plugin.json", import.meta.url));
-
-const indexUrl = new URL("./index.js", import.meta.url);
-const indexSource = await readFile(indexUrl, "utf8");
-const updatedIndexSource = indexSource.replace(
-  /const PLUGIN_VERSION = "[^"]+";/,
-  `const PLUGIN_VERSION = "${nextVersion}";`,
-);
-
-if (updatedIndexSource === indexSource) {
-  console.error("Could not find PLUGIN_VERSION in index.js");
-  process.exit(1);
-}
-
-await writeFile(indexUrl, updatedIndexSource);
 
 const distTag = semver.prerelease(nextVersion)?.[0] ?? "latest";
 const releaseMetadata = [

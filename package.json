@@ -5,19 +5,9 @@
   "type": "module",
   "license": "MIT",
   "private": false,
-  "openclaw": {
-    "extensions": [
-      "./index.js"
-    ],
-    "compat": {
-      "pluginApi": ">=2026.3.22"
-    }
-  },
   "files": [
     ".codex-plugin",
     "assets",
-    "index.js",
-    "openclaw.plugin.json",
     ".claude-plugin",
     ".cursor-plugin",
     ".agents",
@@ -35,9 +25,7 @@
     "semantic-release": "semantic-release"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.27.1",
-    "semver": "7.7.4",
-    "zod": "4.3.6"
+    "semver": "7.7.4"
   },
   "devDependencies": {
     "@semantic-release/commit-analyzer": "13.0.1",
