@@ -1,9 +1,17 @@
+import fs from "node:fs";
 import net from "node:net";
 
-const DEFAULT_SOCKET_PATH = process.env.TASKTRACE_SOCKET_PATH ?? "/tmp/tasktrace-tasktrace-local-openclaw.sock";
+const EXPLICIT_SOCKET_PATH = typeof process.env.TASKTRACE_SOCKET_PATH === "string"
+  ? process.env.TASKTRACE_SOCKET_PATH.trim()
+  : "";
+const KNOWN_SOCKET_PATHS = [
+  "/tmp/tasktrace-tasktrace-openclaw.sock",
+  "/tmp/tasktrace-tasktrace-local-openclaw.sock",
+  "/tmp/tasktrace-tasktrace-dev-openclaw.sock"
+];
 
 export function createTaskTraceSocketBridge({
-  socketPath = DEFAULT_SOCKET_PATH,
+  socketPath = EXPLICIT_SOCKET_PATH || null,
   reconnectDelayMs = 1000
 } = {}) {
   let socket = null;
@@ -15,6 +23,28 @@ export function createTaskTraceSocketBridge({
   let lastInboundAt = null;
   let lastOutboundAt = null;
   let inboundChain = Promise.resolve();
+  let connectedSocketPath = null;
+  let attemptedSocketPath = socketPath;
+
+  const listCandidateSocketPaths = () => {
+    const discoveredSocketPaths = (() => {
+      try {
+        return fs.readdirSync("/tmp")
+          .filter((entry) => entry.startsWith("tasktrace-") && entry.endsWith("-openclaw.sock"))
+          .map((entry) => `/tmp/${entry}`);
+      } catch {
+        return [];
+      }
+    })();
+
+    return [
+      socketPath,
+      EXPLICIT_SOCKET_PATH || null,
+      connectedSocketPath,
+      ...KNOWN_SOCKET_PATHS,
+      ...discoveredSocketPaths
+    ].filter((value, index, values) => typeof value === "string" && value.length > 0 && values.indexOf(value) === index);
+  };
 
   const clearReconnectTimer = () => {
     if (reconnectTimer) {
@@ -73,8 +103,9 @@ export function createTaskTraceSocketBridge({
   };
 
   const handleDisconnect = (reason) => {
-    logger?.warn?.(`[tasktrace-channel] socket disconnected: ${reason}`);
+    logger?.warn?.(`[tasktrace-channel] socket disconnected: ${reason} socketPath=${connectedSocketPath ?? attemptedSocketPath ?? "unknown"}`);
     socket = null;
+    connectedSocketPath = null;
     scheduleReconnect();
   };
 
@@ -86,29 +117,78 @@ export function createTaskTraceSocketBridge({
       return;
     }
 
-    logger?.info?.(`[tasktrace-channel] attempting socket connection to ${socketPath}`);
-    const nextSocket = net.createConnection(socketPath);
-    socket = nextSocket;
+    const candidateSocketPaths = listCandidateSocketPaths();
 
-    nextSocket.on("connect", () => {
-      reconnectAttempts = 0;
-      logger?.info?.(`[tasktrace-channel] connected to ${socketPath}`);
-    });
-    nextSocket.on("data", handleIncomingData);
-    nextSocket.on("error", (error) => {
+    if (candidateSocketPaths.length === 0) {
       reconnectAttempts += 1;
-      logger?.warn?.(`[tasktrace-channel] socket error: ${error.message}`);
-    });
-    nextSocket.on("close", () => {
-      if (socket === nextSocket) {
+      logger?.warn?.("[tasktrace-channel] no TaskTrace socket candidates are available");
+      scheduleReconnect();
+      return;
+    }
+
+    let candidateIndex = 0;
+
+    const tryNextCandidate = () => {
+      if (stopping || (socket && !socket.destroyed)) {
+        return;
+      }
+
+      if (candidateIndex >= candidateSocketPaths.length) {
+        reconnectAttempts += 1;
+        logger?.warn?.(`[tasktrace-channel] exhausted socket candidates: ${candidateSocketPaths.join(", ")}`);
+        scheduleReconnect();
+        return;
+      }
+
+      const candidateSocketPath = candidateSocketPaths[candidateIndex];
+      candidateIndex += 1;
+      attemptedSocketPath = candidateSocketPath;
+      logger?.info?.(`[tasktrace-channel] attempting socket connection to ${candidateSocketPath}`);
+
+      const nextSocket = net.createConnection(candidateSocketPath);
+      let shouldAdvanceCandidate = false;
+      socket = nextSocket;
+
+      nextSocket.on("connect", () => {
+        reconnectAttempts = 0;
+        connectedSocketPath = candidateSocketPath;
+        socketPath = candidateSocketPath;
+        logger?.info?.(`[tasktrace-channel] connected to ${candidateSocketPath}`);
+      });
+      nextSocket.on("data", handleIncomingData);
+      nextSocket.on("error", (error) => {
+        shouldAdvanceCandidate = ["ENOENT", "ECONNREFUSED"].includes(error?.code ?? "");
+
+        if (shouldAdvanceCandidate) {
+          logger?.warn?.(`[tasktrace-channel] socket candidate failed path=${candidateSocketPath} code=${error.code} message=${error.message}`);
+          return;
+        }
+
+        reconnectAttempts += 1;
+        logger?.warn?.(`[tasktrace-channel] socket error path=${candidateSocketPath}: ${error.message}`);
+      });
+      nextSocket.on("close", () => {
+        if (socket !== nextSocket) {
+          return;
+        }
+
+        socket = null;
+
+        if (shouldAdvanceCandidate) {
+          tryNextCandidate();
+          return;
+        }
+
         handleDisconnect("close");
-      }
-    });
-    nextSocket.on("end", () => {
-      if (socket === nextSocket) {
-        handleDisconnect("end");
-      }
-    });
+      });
+      nextSocket.on("end", () => {
+        if (socket === nextSocket) {
+          handleDisconnect("end");
+        }
+      });
+    };
+
+    tryNextCandidate();
   };
 
   return {
@@ -116,7 +196,9 @@ export function createTaskTraceSocketBridge({
       logger = nextLogger ?? console;
       onMessage = typeof nextOnMessage === "function" ? nextOnMessage : null;
       stopping = false;
-      logger?.info?.(`[tasktrace-channel] service start socketPath=${socketPath}`);
+      logger?.info?.(
+        `[tasktrace-channel] service start socketPath=${socketPath ?? "auto"} candidates=${listCandidateSocketPaths().join(", ")}`
+      );
       connect();
     },
     stop() {
@@ -137,12 +219,13 @@ export function createTaskTraceSocketBridge({
     },
     status() {
       return {
-        socketPath,
+        socketPath: connectedSocketPath ?? attemptedSocketPath ?? socketPath ?? KNOWN_SOCKET_PATHS[0],
         connected: Boolean(socket && !socket.destroyed),
         running: !stopping,
         reconnectAttempts,
         lastInboundAt,
-        lastOutboundAt
+        lastOutboundAt,
+        connectedSocketPath
       };
     }
   };
