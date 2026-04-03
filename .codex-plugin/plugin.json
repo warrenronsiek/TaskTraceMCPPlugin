@@ -1,6 +1,6 @@
 {
   "name": "tasktrace-mcp",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Connects the local TaskTrace desktop app to Codex as an MCP server, exposing your work history, activity feeds, and screenshots.",
   "author": {
     "name": "TaskTrace",

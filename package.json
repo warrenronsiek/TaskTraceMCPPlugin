@@ -1,6 +1,6 @@
 {
   "name": "tasktrace-mcp",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "TaskTrace MCP and OpenClaw channel package for the local TaskTrace desktop app.",
   "type": "module",
   "license": "MIT",
