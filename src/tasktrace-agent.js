@@ -5,6 +5,42 @@ const DEFAULT_AGENT_ID = "main";
 const DEFAULT_CHANNEL_ID = "tasktrace";
 const DEFAULT_DM_SCOPE = "per-channel-peer";
 
+function buildInitialPrompt(request) {
+  return request.kind === "chat_message"
+    ? [
+        "TaskTrace user chat message.",
+        "Return ONLY valid JSON.",
+        "The JSON must have exactly these keys:",
+        '{ "importance": "low" | "medium" | "high", "content": "what you want to say" }',
+        "Do not include markdown fences.",
+        "Do not include any extra keys.",
+        "",
+        "USER_MESSAGE:",
+        request.message
+      ].join("\n")
+    : [
+        "TaskTrace triggered an AgentAction.",
+        "Return ONLY valid JSON.",
+        "The JSON must have exactly these keys:",
+        '{ "importance": "low" | "medium" | "high", "content": "what you want to say" }',
+        "Do not include markdown fences.",
+        "Do not include any extra keys.",
+        "",
+        "MESSAGE:",
+        request.message,
+        "",
+        `EVENT_TYPE: ${request.eventType}`,
+        "QUEUED_EVENT_PAYLOADS_JSON:",
+        JSON.stringify(
+          request.queuedEventPayloads.length > 0 ? request.queuedEventPayloads : [request.eventPayload],
+          null,
+          2
+        ),
+        "",
+        "Respond with the useful final answer only."
+      ].join("\n");
+}
+
 export function createTaskTraceSocketMessageHandler(api) {
   return async (rawMessage) => {
     const request = (() => {
@@ -115,41 +151,15 @@ export function createTaskTraceSocketMessageHandler(api) {
       workspaceDir,
       agentDir,
       config: cfg,
-      prompt: request.kind === "chat_message"
-        ? [
-            "TaskTrace user chat message.",
-            "Return ONLY valid JSON.",
-            "The JSON must have exactly these keys:",
-            '{ "importance": "low" | "medium" | "high", "content": "what you want to say" }',
-            "Do not include markdown fences.",
-            "Do not include any extra keys.",
-            "",
-            "USER_MESSAGE:",
-            request.message
-          ].join("\n")
-        : [
-            "TaskTrace triggered an AgentAction.",
-            "Return ONLY valid JSON.",
-            "The JSON must have exactly these keys:",
-            '{ "importance": "low" | "medium" | "high", "content": "what you want to say" }',
-            "Do not include markdown fences.",
-            "Do not include any extra keys.",
-            "",
-            "MESSAGE:",
-            request.message,
-            "",
-            `EVENT_TYPE: ${request.eventType}`,
-            "QUEUED_EVENT_PAYLOADS_JSON:",
-            JSON.stringify(
-              request.queuedEventPayloads.length > 0 ? request.queuedEventPayloads : [request.eventPayload],
-              null,
-              2
-            ),
-            "",
-            "Respond with the useful final answer only."
-          ].join("\n"),
+      prompt: buildInitialPrompt(request),
       extraSystemPrompt: [
         "The TaskTrace app is sending structured automation events.",
+        "You have access to the TaskTrace MCP tool `tasktrace_search` for broad historical lookup.",
+        "You also have OpenClaw tools `tasktrace_get_active_day_overviews`, `tasktrace_get_high_level_activities`, `tasktrace_get_detailed_activities`, `tasktrace_list_resources`, `tasktrace_list_resource_templates`, and `tasktrace_read_resource`.",
+        "Use `tasktrace_get_active_day_overviews` for what the user has been doing today at the project level.",
+        "Use `tasktrace_get_high_level_activities` for a summary timeline of recent completed work.",
+        "Use `tasktrace_get_detailed_activities` for current or very recent evidence like transcripts, keystrokes, and screenshot metadata.",
+        "Use `tasktrace_read_resource` when you need a specific resource URI, including screenshot URIs discovered from the detailed feed.",
         "Do not ask the user to resend prior context if it is already in the conversation history.",
         "Treat repeated calls with the same conversation identity as the same ongoing thread."
       ].join("\n"),
@@ -157,6 +167,10 @@ export function createTaskTraceSocketMessageHandler(api) {
       runId: `tasktrace-${request.conversationID}-${Date.now()}`,
       disableMessageTool: true
     });
+
+    if (!result) {
+      throw new Error("OpenClaw did not return a TaskTrace agent result.");
+    }
 
     const responseText = (result.payloads ?? [])
       .filter((payload) => !payload.isError && typeof payload.text === "string")

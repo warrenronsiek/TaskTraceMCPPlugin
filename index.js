@@ -1,6 +1,7 @@
 import { tasktraceChannelPlugin } from "./src/channel.js";
 import { createTaskTraceSocketBridge } from "./src/socket-bridge.js";
 import { createTaskTraceSocketMessageHandler } from "./src/tasktrace-agent.js";
+import { registerTaskTraceMcpTools } from "./src/tasktrace-tools.js";
 
 const socketBridge = createTaskTraceSocketBridge();
 let startedByGatewayRegister = false;
@@ -9,6 +10,7 @@ let registeredProcessCleanup = false;
 export default function register(api) {
   const handleSocketMessage = createTaskTraceSocketMessageHandler(api);
 
+  registerTaskTraceMcpTools(api);
   api.registerChannel({ plugin: tasktraceChannelPlugin(socketBridge, api.logger) });
   api.registerService({
     id: "tasktrace-socket-bridge",
