@@ -6,11 +6,20 @@ const packageJson = JSON.parse(await readFile(new URL("./package.json", import.m
 const mcpConfig = JSON.parse(await readFile(new URL("./.mcp.json", import.meta.url), "utf8"));
 const codexPlugin = JSON.parse(await readFile(new URL("./.codex-plugin/plugin.json", import.meta.url), "utf8"));
 const claudePlugin = JSON.parse(await readFile(new URL("./.claude-plugin/plugin.json", import.meta.url), "utf8"));
+const openclawPlugin = JSON.parse(await readFile(new URL("./openclaw.plugin.json", import.meta.url), "utf8"));
 
-test("package is bundle-only for OpenClaw", () => {
-  assert.equal("openclaw" in packageJson, false);
-  assert.equal(packageJson.files.includes("openclaw.plugin.json"), false);
-  assert.equal(packageJson.files.includes("index.js"), false);
+test("package exposes the OpenClaw runtime bridge alongside the shared MCP bundle metadata", () => {
+  assert.deepEqual(packageJson.openclaw, {
+    extensions: ["./index.js"],
+    channel: {
+      id: "tasktrace",
+      label: "TaskTrace",
+      blurb: "Local Unix-socket bridge to a running TaskTrace app.",
+    },
+  });
+  assert.equal(packageJson.files.includes("openclaw.plugin.json"), true);
+  assert.equal(packageJson.files.includes("index.js"), true);
+  assert.equal(packageJson.files.includes("src"), true);
 });
 
 test("shared mcp config points at the canonical TaskTrace stdio command", () => {
@@ -22,6 +31,12 @@ test("shared mcp config points at the canonical TaskTrace stdio command", () => 
       },
     },
   });
+});
+
+test("native OpenClaw manifest keeps the official plugin identity and channel registration", () => {
+  assert.equal(openclawPlugin.id, "tasktrace-mcp");
+  assert.equal(openclawPlugin.name, "TaskTrace MCP");
+  assert.deepEqual(openclawPlugin.channels, ["tasktrace"]);
 });
 
 test("bundle manifests keep the TaskTrace MCP wiring", () => {

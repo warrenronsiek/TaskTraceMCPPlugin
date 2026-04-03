@@ -15,6 +15,7 @@ const updateJsonVersion = async (path) => {
 };
 
 await updateJsonVersion(new URL("./package.json", import.meta.url));
+await updateJsonVersion(new URL("./openclaw.plugin.json", import.meta.url));
 await updateJsonVersion(new URL("./.claude-plugin/plugin.json", import.meta.url));
 await updateJsonVersion(new URL("./.codex-plugin/plugin.json", import.meta.url));
 await updateJsonVersion(new URL("./.cursor-plugin/plugin.json", import.meta.url));

@@ -1,0 +1,14 @@
+{
+  "id": "tasktrace-mcp",
+  "name": "TaskTrace MCP",
+  "description": "TaskTrace OpenClaw plugin bundle with MCP wiring and a local Unix-socket channel bridge.",
+  "version": "1.8.0",
+  "channels": [
+    "tasktrace"
+  ],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

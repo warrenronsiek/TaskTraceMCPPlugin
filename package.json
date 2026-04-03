@@ -1,20 +1,31 @@
 {
   "name": "tasktrace-mcp",
   "version": "1.8.0",
-  "description": "TaskTrace MCP integration package for OpenClaw, Claude Code, and Cursor-compatible bundles.",
+  "description": "TaskTrace MCP and OpenClaw channel package for the local TaskTrace desktop app.",
   "type": "module",
   "license": "MIT",
   "private": false,
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ],
+    "channel": {
+      "id": "tasktrace",
+      "label": "TaskTrace",
+      "blurb": "Local Unix-socket bridge to a running TaskTrace app."
+    }
+  },
   "files": [
     ".codex-plugin",
     "assets",
     ".claude-plugin",
     ".cursor-plugin",
-    ".agents",
     ".mcp.json",
-    "plugins",
+    "index.js",
+    "openclaw.plugin.json",
     "README.md",
     "scripts",
+    "src",
     "versionUpdate.mjs"
   ],
   "scripts": {

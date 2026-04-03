@@ -1,27 +1,36 @@
 # TaskTraceMCPPlugin
 
-`TaskTraceMCPPlugin` is the standalone public packaging repo for connecting the local TaskTrace desktop app to MCP-capable clients.
+`TaskTraceMCPPlugin` is the standalone public packaging repo for connecting the local TaskTrace desktop app to MCP-capable clients and the OpenClaw channel runtime.
 
 Full documentation — resources, tools, installation, and configuration — is at **[tasktrace.com/docs](https://tasktrace.com/docs)**.
 
 It currently includes packaging for:
 
 - OpenClaw compatible bundles
+- OpenClaw native channel runtime
 - Claude Code local plugins
 - Codex local plugins
 - Cursor-compatible bundle metadata
 - generic `.mcp.json` stdio server wiring
 
-The server itself is still the TaskTrace desktop app. Every client path here launches:
+The MCP server itself is still the TaskTrace desktop app. Every MCP client path here launches:
 
 ```bash
 /Applications/TaskTrace.app/Contents/MacOS/TaskTrace --mcp-stdio
 ```
 
+The OpenClaw channel runtime in this repo separately opens a Unix-domain socket to the local TaskTrace app so agent actions can exchange live messages over the `tasktrace` channel.
+
 ## Repository layout
 
 - `package.json`
-  Package metadata for local install, `npm pack`, and publication. This repo intentionally does not expose a native OpenClaw runtime entrypoint.
+  Package metadata for local install, `npm pack`, publication, and the OpenClaw runtime registration.
+
+- `openclaw.plugin.json`
+  Native OpenClaw plugin manifest for the TaskTrace channel bridge.
+
+- `index.js` and `src/`
+  Native OpenClaw runtime entrypoint plus the Unix-socket bridge and TaskTrace agent session handler.
 
 - `.claude-plugin/plugin.json`
   Claude Code plugin manifest with inline `mcpServers` config.
@@ -54,16 +63,17 @@ The server itself is still the TaskTrace desktop app. Every client path here lau
 
 ## Current packaging state
 
-What was verified locally on March 22, 2026:
+What was verified locally on April 2, 2026:
 
 - `openclaw plugins install .` succeeded on `OpenClaw 2026.3.13`
-- `openclaw plugins inspect tasktrace-mcp` showed the bundle was discovered and enabled
+- `openclaw plugins inspect tasktrace-mcp` showed the plugin was discovered and enabled
 - `npm pack` produced a working install artifact and `openclaw plugins install ./tasktrace-mcp-0.1.0.tgz` also succeeded
 - `claude --plugin-dir . --version` accepted the local plugin layout
+- the native `tasktrace` channel connected to the local TaskTrace socket and returned structured JSON responses
 
 What still needs product-level QA on a normal TaskTrace machine:
 
-- a full end-to-end OpenClaw embedded-agent turn using the bundled TaskTrace MCP server
+- a full end-to-end OpenClaw embedded-agent turn that uses both the bundled TaskTrace MCP server and the native channel bridge
 - a full end-to-end Claude plugin session using this standalone repo
 - runtime validation on a machine where TaskTrace launches cleanly from `/Applications`
 
@@ -95,7 +105,17 @@ openclaw gateway restart
 openclaw plugins inspect tasktrace-mcp
 ```
 
-OpenClaw should report this install as a compatible bundle, not a native runtime plugin. The bundled MCP server configuration comes from `.claude-plugin/plugin.json` / `.codex-plugin/plugin.json` and `.mcp.json`.
+OpenClaw should discover both parts of the package:
+
+- the bundled TaskTrace MCP server configuration from `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and `.mcp.json`
+- the native `tasktrace` channel bridge from `openclaw.plugin.json`, `index.js`, and `src/`
+
+Useful verification after install:
+
+```bash
+openclaw plugins inspect tasktrace-mcp
+openclaw channels list
+```
 
 ClawHub install is currently not available:
 
@@ -232,9 +252,10 @@ npm pack
 openclaw plugins install .
 openclaw gateway restart
 openclaw plugins inspect tasktrace-mcp
+openclaw channels list
 ```
 
-Confirm the plugin is reported as a bundle and that its bundled MCP server is present.
+Confirm the plugin is enabled, that its bundled MCP server is present, and that the `tasktrace` channel is available.
 
 6. Smoke test the Claude plugin layout locally:
 
