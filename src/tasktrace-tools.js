@@ -138,6 +138,10 @@ export function registerTaskTraceMcpTools(api) {
         throw new Error("tasktrace_read_resource requires a non-empty uri.");
       }
 
+      if (!uri.startsWith("tasktrace://")) {
+        throw new Error(`tasktrace_read_resource only accepts tasktrace:// URIs, got: ${uri.split("://")[0]}://`);
+      }
+
       return toolTextResult(
         summarizedReadResult(
           await withTaskTraceMcp(ctx, api.logger, async ({ client }) => await client.readResource({ uri }))

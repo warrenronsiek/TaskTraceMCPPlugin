@@ -1,6 +1,26 @@
 const DEFAULT_ACCOUNT_ID = "default";
 const PLUGIN_ID = "tasktrace-mcp";
 
+function buildAccountState(socketBridge, cfg, accountId) {
+  const bridge = socketBridge.status();
+  const resolvedAccountId = accountId?.trim() || DEFAULT_ACCOUNT_ID;
+  const enabled = cfg?.plugins?.entries?.[PLUGIN_ID]?.enabled !== false;
+
+  return {
+    accountId: resolvedAccountId,
+    name: "TaskTrace",
+    configured: true,
+    enabled,
+    linked: bridge.connected,
+    connected: bridge.connected,
+    running: bridge.running,
+    reconnectAttempts: bridge.reconnectAttempts,
+    lastInboundAt: bridge.lastInboundAt,
+    socketPath: bridge.socketPath,
+    mode: "unix-socket"
+  };
+}
+
 export function tasktraceChannelPlugin(socketBridge, logger) {
   return {
     id: "tasktrace",
@@ -18,42 +38,8 @@ export function tasktraceChannelPlugin(socketBridge, logger) {
     config: {
       defaultAccountId: () => DEFAULT_ACCOUNT_ID,
       listAccountIds: () => [DEFAULT_ACCOUNT_ID],
-      resolveAccount: (cfg, accountId) => {
-        const bridge = socketBridge.status();
-        const resolvedAccountId = accountId?.trim() || DEFAULT_ACCOUNT_ID;
-        const enabled = cfg?.plugins?.entries?.[PLUGIN_ID]?.enabled !== false;
-
-        return {
-          accountId: resolvedAccountId,
-          name: "TaskTrace Local",
-          configured: true,
-          enabled,
-          linked: bridge.connected,
-          connected: bridge.connected,
-          running: bridge.running,
-          reconnectAttempts: bridge.reconnectAttempts,
-          lastInboundAt: bridge.lastInboundAt,
-          mode: "unix-socket"
-        };
-      },
-      inspectAccount: (cfg, accountId) => {
-        const bridge = socketBridge.status();
-        const resolvedAccountId = accountId?.trim() || DEFAULT_ACCOUNT_ID;
-        const enabled = cfg?.plugins?.entries?.[PLUGIN_ID]?.enabled !== false;
-
-        return {
-          accountId: resolvedAccountId,
-          name: "TaskTrace Local",
-          configured: true,
-          enabled,
-          linked: bridge.connected,
-          connected: bridge.connected,
-          running: bridge.running,
-          reconnectAttempts: bridge.reconnectAttempts,
-          lastInboundAt: bridge.lastInboundAt,
-          mode: "unix-socket"
-        };
-      },
+      resolveAccount: (cfg, accountId) => buildAccountState(socketBridge, cfg, accountId),
+      inspectAccount: (cfg, accountId) => buildAccountState(socketBridge, cfg, accountId),
       isConfigured: () => true,
       isEnabled: (account) => account?.enabled !== false
     },
@@ -63,7 +49,7 @@ export function tasktraceChannelPlugin(socketBridge, logger) {
 
         return {
           accountId,
-          name: account?.name ?? "TaskTrace Local",
+          name: account?.name ?? "TaskTrace",
           configured: true,
           enabled: account?.enabled !== false,
           linked: bridge.connected,
@@ -71,6 +57,7 @@ export function tasktraceChannelPlugin(socketBridge, logger) {
           running: bridge.running,
           reconnectAttempts: bridge.reconnectAttempts,
           lastInboundAt: bridge.lastInboundAt,
+          socketPath: bridge.socketPath,
           mode: "unix-socket"
         };
       },

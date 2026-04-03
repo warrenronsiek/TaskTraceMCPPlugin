@@ -21,6 +21,8 @@ The MCP server itself is still the TaskTrace desktop app. Every MCP client path 
 
 The OpenClaw channel runtime in this repo separately opens a Unix-domain socket to the local TaskTrace app so agent actions can exchange live messages over the `tasktrace` channel.
 
+The channel bridge now auto-discovers the standard TaskTrace socket paths for prod, local, and dev builds. If you need to force a specific app instance, set `TASKTRACE_SOCKET_PATH` before starting the OpenClaw gateway.
+
 Important packaging note: in current OpenClaw builds, `openclaw plugins install .` installs the native plugin and channel runtime, but it does not automatically register the TaskTrace stdio MCP server from `.mcp.json`. You must add that MCP server separately with `openclaw mcp set ...`.
 
 ## Repository layout
