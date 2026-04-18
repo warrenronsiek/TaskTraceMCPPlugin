@@ -1,7 +1,7 @@
 {
   "name": "tasktrace-mcp",
   "description": "Gives Claude access to your own work history. Ask things like 'what did I do today', 'find when I worked on billing', or 'what do I know about OAuth' — Claude reads your TaskTrace activity and knowledge graph locally through an MCP server.",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "author": {
     "name": "TaskTrace",
     "email": "support@tasktrace.com"

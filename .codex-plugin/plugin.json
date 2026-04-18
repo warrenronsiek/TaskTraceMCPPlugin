@@ -1,6 +1,6 @@
 {
   "name": "tasktrace-mcp",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "Gives Codex access to your own work history. Ask 'what did I do today', 'find when I worked on billing', or 'what do I know about OAuth' — Codex reads your TaskTrace activity and knowledge graph locally through an MCP server.",
   "author": {
     "name": "TaskTrace",
