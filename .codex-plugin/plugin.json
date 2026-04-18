@@ -1,7 +1,7 @@
 {
   "name": "tasktrace-mcp",
   "version": "1.10.0",
-  "description": "Connects the local TaskTrace desktop app to Codex as an MCP server, exposing your work history, activity feeds, and screenshots.",
+  "description": "Gives Codex access to your own work history. Ask 'what did I do today', 'find when I worked on billing', or 'what do I know about OAuth' — Codex reads your TaskTrace activity and knowledge graph locally through an MCP server.",
   "author": {
     "name": "TaskTrace",
     "email": "support@tasktrace.com",
@@ -15,13 +15,15 @@
     "mcp",
     "activity",
     "productivity",
-    "screen-recording"
+    "screen-recording",
+    "knowledge-graph",
+    "context"
   ],
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "TaskTrace",
-    "shortDescription": "Connect TaskTrace desktop activity and history to Codex",
-    "longDescription": "Registers the local TaskTrace desktop app as an MCP server for Codex so you can inspect work history, activity feeds, screenshots, and related TaskTrace resources directly from the agent.",
+    "shortDescription": "Your own work history as context for Codex",
+    "longDescription": "Connects the local TaskTrace desktop app to Codex as an MCP server. Codex can ask questions like 'what did I do today', 'find when I worked on billing', 'what am I typing right now', or 'what do I know about OAuth refresh flows', and get answers from your recent activity, screenshots, transcripts, and knowledge graph. All data stays on your machine; you choose which feeds to share from TaskTrace's Preferences > MCP pane.",
     "developerName": "TaskTrace",
     "category": "Productivity",
     "capabilities": [
@@ -32,7 +34,7 @@
     "privacyPolicyURL": "https://tasktrace.com/privacy",
     "termsOfServiceURL": "https://tasktrace.com/terms",
     "defaultPrompt": [
-      "Use TaskTrace to inspect recent work history and activity for this project"
+      "Use TaskTrace to answer questions about my own work history, in-progress tasks, and personal knowledge graph. Run tasktrace_search for historical questions and read the active-day resources when I ask about today."
     ],
     "composerIcon": "./assets/favicon-192x192.png",
     "logo": "./assets/tasktrace-logo-black-bg.svg",

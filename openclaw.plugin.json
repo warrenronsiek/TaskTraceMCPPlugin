@@ -1,7 +1,7 @@
 {
   "id": "tasktrace-mcp",
   "name": "TaskTrace MCP",
-  "description": "TaskTrace OpenClaw plugin bundle with MCP wiring and a local Unix-socket channel bridge.",
+  "description": "Gives OpenClaw agents access to your own work history and knowledge graph. Bundles the TaskTrace MCP server, resource-backed OpenClaw tools, and a Unix-socket channel bridge so agents can read your recent activity, screenshots, transcripts, and curated notes locally.",
   "version": "1.8.0",
   "channels": [
     "tasktrace"

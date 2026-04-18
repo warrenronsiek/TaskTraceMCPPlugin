@@ -1,135 +1,153 @@
-# TaskTraceMCPPlugin
+# TaskTrace for Claude Code (and Codex, OpenClaw, any MCP client)
 
-`TaskTraceMCPPlugin` is the standalone public packaging repo for connecting the local TaskTrace desktop app to MCP-capable clients and the OpenClaw channel runtime.
+Give your AI agent access to what you were actually doing. Ask Claude *"what did I do today"*, *"find when I worked on billing"*, or *"help me finish what I was on before lunch"* — and get real answers from your own desktop activity, screenshots, transcripts, and notes.
 
-Full documentation — resources, tools, installation, and configuration — is at **[tasktrace.com/docs](https://tasktrace.com/docs)**.
+Everything runs locally against the TaskTrace desktop app on your machine. There is no cloud service to sign up for and nothing leaves your computer unless you send it.
 
-It currently includes packaging for:
+## What this solves
 
-- OpenClaw native channel runtime
-- OpenClaw MCP setup files
-- Claude Code local plugins
-- Codex local plugins
-- Cursor-compatible bundle metadata
-- generic `.mcp.json` stdio server wiring
+Every AI conversation starts from zero. You re-explain the task, the state, the context, every time. TaskTrace holds a rolling record of what you actually did — so the assistant can look it up instead of asking.
 
-The MCP server itself is still the TaskTrace desktop app. Every MCP client path here launches:
+With this plugin installed and TaskTrace running, Claude can:
+
+- **Recap your day** — "what did I do today" reads grouped summaries of today's work.
+- **Pick up threads** — "continue what I was doing on the ingest pipeline" searches your history and reads the in-progress activity for exact state.
+- **Find past work** — "when did I last touch the OAuth flow", "find everything about migrations from the last month".
+- **Surface what you know** — "what do I know about PDF parsing" queries a knowledge graph built from your notes, documents, and captures.
+- **Read the screen** — "what's on my screen right now" for current context, or fetch a specific past screenshot if needed.
+
+You control which feeds are shared from TaskTrace's **Preferences → MCP** pane. Turn any of them off and Claude simply does not see that data.
+
+## Install for Claude Code
+
+**One-line install** via the plugin marketplace:
+
+```bash
+/plugin marketplace add warrenronsiek/TaskTraceMCPPlugin
+/plugin install tasktrace-mcp@tasktrace-mcp
+```
+
+Then in Claude Code:
+
+```bash
+/mcp
+```
+
+You should see `tasktrace` listed. That is it.
+
+**Don't have TaskTrace yet?** Download the desktop app from [tasktrace.com](https://tasktrace.com), drop it in `/Applications`, launch it once, and open **Preferences → MCP** to turn on the feeds you want to share.
+
+**Stuck?** Run `/tasktrace-mcp:setup` inside Claude Code. The setup skill checks your install, reports what is missing, and walks through the fix.
+
+### Manual MCP registration (no plugin)
+
+If you prefer to skip the plugin and just register the MCP server directly:
+
+```bash
+claude mcp add --transport stdio --scope project tasktrace -- /Applications/TaskTrace.app/Contents/MacOS/TaskTrace --mcp-stdio
+claude mcp list
+```
+
+You get the tools and resources, but not the skills that teach Claude when to use them.
+
+## What's inside the Claude plugin
+
+The plugin contributes three skills on top of the MCP wiring:
+
+- **`tasktrace-context`** — auto-triggers on questions about your own work ("what did I do today", "find when I worked on X", "help me with this"). Teaches Claude which tool or resource to use for each query pattern.
+- **`tasktrace-knowledge`** — auto-triggers on questions about what you know ("what do I know about X", "find claims about Y"). Routes to the graph search tool.
+- **`tasktrace-setup`** — user-invoked via `/tasktrace-mcp:setup`. Runs install checks, identifies missing permissions, and walks you through fixes.
+
+The MCP server itself exposes:
+
+- `tasktrace_search` — ranked natural-language search across your entire activity history.
+- `tasktrace_graph_search` — structured retrieval over your selected knowledge directory (communities, nodes, claims).
+- `tasktrace://overviews/active-day` — today's grouped work with summaries and durations.
+- `tasktrace://activities/high-level` — recent completed activities with summaries.
+- `tasktrace://activities/detailed` — eager feed including keystrokes, transcripts, screenshot metadata (off by default).
+- `tasktrace://activity/{activityId}/screenshot/{screenshotId}` — binary WebP screenshots on demand.
+
+## What stays on your machine
+
+TaskTrace captures what you ask it to capture. The MCP server only surfaces the feeds and tools you enable in the app. There is no remote endpoint. The MCP launcher is just a subprocess of the TaskTrace app you already have running:
 
 ```bash
 /Applications/TaskTrace.app/Contents/MacOS/TaskTrace --mcp-stdio
 ```
 
-The OpenClaw channel runtime in this repo separately opens a Unix-domain socket to the local TaskTrace app so agent actions can exchange live messages over the `tasktrace` channel.
+When you turn off a feed in **Preferences → MCP**, Claude stops seeing it. There is nothing cached outside the app.
 
-The channel bridge now auto-discovers the standard TaskTrace socket paths for prod, local, and dev builds. If you need to force a specific app instance, set `TASKTRACE_SOCKET_PATH` before starting the OpenClaw gateway.
+## Other clients
 
-Important packaging note: in current OpenClaw builds, `openclaw plugins install .` installs the native plugin and channel runtime, but it does not automatically register the TaskTrace stdio MCP server from `.mcp.json`. You must add that MCP server separately with `openclaw mcp set ...`.
+### Codex
 
-## Repository layout
+Stage and install from the local Codex marketplace:
 
-- `package.json`
-  Package metadata for local install, `npm pack`, publication, and the OpenClaw runtime registration.
+```bash
+npm install
+npm run install:codex-local
+```
 
-- `openclaw.plugin.json`
-  Native OpenClaw plugin manifest for the TaskTrace channel bridge.
-
-- `index.js` and `src/`
-  Native OpenClaw runtime entrypoint plus the Unix-socket bridge and TaskTrace agent session handler.
-
-- `.claude-plugin/plugin.json`
-  Claude Code plugin manifest with inline `mcpServers` config.
-
-- `.cursor-plugin/plugin.json`
-  Cursor-compatible plugin marker.
-
-- `.codex-plugin/plugin.json`
-  Codex plugin manifest that registers TaskTrace as an MCP server.
-
-- `.codex-plugin/marketplace.json`
-  Reference marketplace entry for a home-local Codex install.
-
-- `.mcp.json`
-  Reusable MCP server config in standard `mcpServers` format, including the Codex plugin install.
-
-- `scripts/set-version.mjs`
-  Semver-backed helper that validates a version and syncs it across package metadata and manifests.
-
-## Docs reviewed
-
-- OpenClaw bundle docs: https://docs.openclaw.ai/plugins/bundles
-- OpenClaw native plugin docs: https://docs.openclaw.ai/plugins/building-plugins
-- OpenClaw plugin manifest reference: https://docs.openclaw.ai/plugins/manifest
-- OpenClaw plugin CLI docs: https://docs.openclaw.ai/cli/plugins
-- Claude MCP docs: https://code.claude.com/docs/en/mcp
-- Claude plugin docs: https://code.claude.com/docs/en/plugins
-- MCP lifecycle spec: https://modelcontextprotocol.io/specification/2024-11-05/basic/lifecycle
-- TaskTrace MCP server docs: https://tasktrace.com/docs
-
-## Current packaging state
-
-What was verified locally on April 3, 2026:
-
-- `openclaw plugins install .` succeeded on `OpenClaw 2026.3.13`
-- `openclaw plugins inspect tasktrace-mcp` showed the plugin was discovered and enabled
-- `openclaw mcp set tasktrace '{"command":"/Applications/TaskTrace.app/Contents/MacOS/TaskTrace","args":["--mcp-stdio"]}'` registered the TaskTrace stdio MCP server in OpenClaw config
-- `npm pack` produced a working install artifact and `openclaw plugins install ./tasktrace-mcp-0.1.0.tgz` also succeeded
-- `claude --plugin-dir . --version` accepted the local plugin layout
-- the native `tasktrace` channel connected to the local TaskTrace socket and returned structured JSON responses
-
-What still needs product-level QA on a normal TaskTrace machine:
-
-- a full end-to-end OpenClaw embedded-agent turn that uses both the bundled TaskTrace MCP server and the native channel bridge
-- a full end-to-end Claude plugin session using this standalone repo
-- runtime validation on a machine where TaskTrace launches cleanly from `/Applications`
-
-## Install and test
+Then restart Codex, open the local marketplace, and install `tasktrace-mcp`.
 
 ### OpenClaw
 
-Install from a local checkout:
-
 ```bash
-git clone https://github.com/warrenronsiek/TaskTraceMCPPlugin.git
-cd TaskTraceMCPPlugin
-npm pack
 openclaw plugins install .
 openclaw mcp set tasktrace '{"command":"/Applications/TaskTrace.app/Contents/MacOS/TaskTrace","args":["--mcp-stdio"]}'
-openclaw config set tools.profile '"full"' --strict-json
 openclaw config unset tools.allow
 openclaw gateway restart
-openclaw mcp list
-openclaw channels list
-openclaw plugins list
 openclaw plugins inspect tasktrace-mcp
+openclaw channels list
 ```
 
-Install from the packed archive instead:
+OpenClaw also gets the native `tasktrace` channel bridge over a local Unix socket, which lets agents exchange live messages with the running TaskTrace app on the `tasktrace` channel.
 
-```bash
-git clone https://github.com/warrenronsiek/TaskTraceMCPPlugin.git
-cd TaskTraceMCPPlugin
-npm pack
-openclaw plugins install ./tasktrace-mcp-$(node -p 'require("./package.json").version').tgz
-openclaw mcp set tasktrace '{"command":"/Applications/TaskTrace.app/Contents/MacOS/TaskTrace","args":["--mcp-stdio"]}'
-openclaw config unset tools.allow
-openclaw gateway restart
-openclaw mcp list
-openclaw channels list
-openclaw plugins inspect tasktrace-mcp
-```
+### Generic `.mcp.json`
 
-OpenClaw setup now has two explicit pieces:
+Use the included `.mcp.json` as a starting point for any client that supports project-scoped MCP server config files.
 
-- `openclaw plugins install .`
-  Installs the native `tasktrace-mcp` OpenClaw plugin and the `tasktrace` channel bridge.
+## Troubleshooting
 
-- `openclaw mcp set tasktrace ...`
-  Registers the TaskTrace stdio MCP server in `~/.openclaw/openclaw.json`.
+Run `/tasktrace-mcp:setup` first — it diagnoses most problems.
 
-- `openclaw config unset tools.allow`
-  Clears stale TaskTrace-era allowlists from older installs so the embedded OpenClaw agent can see the current TaskTrace MCP tool catalog.
+Common issues and fixes:
 
-For the current TaskTrace channel bridge, OpenClaw now exposes the TaskTrace MCP search surface plus TaskTrace resource-backed OpenClaw tools. Those resource-backed tools are powered by the already-registered TaskTrace stdio MCP server, so the plugin is reading the real TaskTrace MCP resources rather than a duplicate data path:
+| Symptom | Fix |
+|---|---|
+| `/mcp` does not list `tasktrace` | Restart your Claude Code session after installing the plugin. |
+| Claude says it can't see your activity | Open TaskTrace → Preferences → MCP, turn on **Enable MCP server**, enable the specific resources and tools. |
+| Screenshots are blank | macOS → System Settings → Privacy & Security → Screen & System Audio Recording → grant TaskTrace. |
+| Keystrokes missing from detailed feed | macOS → System Settings → Privacy & Security → Input Monitoring → grant TaskTrace. |
+| Transcripts missing | macOS → System Settings → Privacy & Security → Microphone → grant TaskTrace, and enable transcription in TaskTrace. |
+| Resource returns empty | That feed may be disabled in TaskTrace, or you haven't worked today. Both are fine. |
+
+---
+
+## Development and packaging
+
+*The rest of this file is for contributors and packagers. End users can stop here.*
+
+### Repository layout
+
+- `.claude-plugin/plugin.json` — Claude Code plugin manifest with inline `mcpServers` config
+- `.claude-plugin/marketplace.json` — Claude Code marketplace entry
+- `skills/` — Claude Code skills (`tasktrace-context`, `tasktrace-knowledge`, `tasktrace-setup`)
+- `.codex-plugin/plugin.json` — Codex plugin manifest
+- `.codex-plugin/marketplace.json` — reference marketplace entry for a home-local Codex install
+- `.cursor-plugin/plugin.json` — Cursor-compatible plugin marker
+- `openclaw.plugin.json` — OpenClaw plugin manifest for the TaskTrace channel bridge
+- `.mcp.json` — reusable MCP server config in standard `mcpServers` format
+- `index.js` and `src/` — native OpenClaw runtime entrypoint plus the Unix-socket bridge and TaskTrace agent session handler
+- `package.json` — package metadata for local install, `npm pack`, publication, and OpenClaw runtime registration
+- `scripts/set-version.mjs` — semver-backed helper that validates a version and syncs it across manifests
+- `scripts/install-codex-plugin.mjs` — stages this bundle into the local Codex marketplace
+
+### OpenClaw channel bridge
+
+The channel bridge auto-discovers the standard TaskTrace socket paths for prod, local, and dev builds. To force a specific app instance, set `TASKTRACE_SOCKET_PATH` before starting the OpenClaw gateway.
+
+OpenClaw exposes these resource-backed tools on top of the native channel:
 
 - `tasktrace_list_resources`
 - `tasktrace_list_resource_templates`
@@ -138,158 +156,41 @@ For the current TaskTrace channel bridge, OpenClaw now exposes the TaskTrace MCP
 - `tasktrace_get_detailed_activities`
 - `tasktrace_read_resource`
 
-That lets OpenClaw agents read the active-day overview feed, the recent activity feeds, and screenshot resource URIs without you having to hand-wrap each specific TaskTrace feed as a separate bespoke tool.
+These are powered by the already-registered TaskTrace stdio MCP server, so OpenClaw reads the real TaskTrace resources rather than a duplicate data path.
 
-Useful verification after install:
-
-```bash
-openclaw mcp list
-openclaw plugins inspect tasktrace-mcp
-openclaw channels list
-```
-
-ClawHub install is currently not available:
-
-```text
-openclaw plugins install tasktrace-mcp
-```
-
-ClawHub is currently broken for this plugin path: https://github.com/openclaw/clawhub/issues/1088
-
-### Claude Code
-
-Install via the plugin marketplace (automatically registers the MCP server):
-
-```bash
-/plugin marketplace add warrenronsiek/TaskTraceMCPPlugin
-/plugin install tasktrace-mcp@tasktrace-mcp
-```
-
-Or register the MCP server directly:
-
-```bash
-claude mcp add --transport stdio --scope project tasktrace -- /Applications/TaskTrace.app/Contents/MacOS/TaskTrace --mcp-stdio
-claude mcp list
-```
-
-### Codex
-
-Stage the plugin into the local Codex marketplace:
-
-```bash
-npm run install:codex-local
-```
-
-Then:
-
-```text
-1. Restart Codex.
-2. Open the local marketplace.
-3. Install `tasktrace-mcp`.
-```
-
-If you want to restage and reinstall from a fresh local checkout:
-
-```bash
-git clone https://github.com/warrenronsiek/TaskTraceMCPPlugin.git
-cd TaskTraceMCPPlugin
-npm install
-npm run install:codex-local
-```
-
-That command is idempotent. Each run:
-
-- refreshes the staged plugin source bundle under the local Codex marketplace root
-- removes the old legacy `~/.codex/plugins/tasktrace-mcp` location used by earlier installer versions
-- removes any cached installed copy for this plugin under `~/.codex/plugins/cache/...` so the next install uses the latest staged files
-- creates or updates the local marketplace entry
-
-The staged source bundle lives at:
-
-```text
-~/.agents/plugins/.codex/plugins/tasktrace-mcp
-```
-
-and creates or updates:
-
-```text
-~/.agents/plugins/marketplace.json
-```
-
-with a marketplace entry whose `source.path` is the documented marketplace-root-relative path:
-
-```json
-"./.codex/plugins/tasktrace-mcp"
-```
-
-Codex then creates the actual installed copy under its plugin cache. If the plugin was previously installed, the installer will already have removed the stale cached copy so this install behaves like a clean reinstall. The staged source bundle includes `.codex-plugin/plugin.json`, `.mcp.json`, and the required `assets/` files, and registers the same local stdio server:
-
-```bash
-/Applications/TaskTrace.app/Contents/MacOS/TaskTrace --mcp-stdio
-```
-
-### Generic `.mcp.json`
-
-Use the included `.mcp.json` as a starting point for clients that support project-scoped MCP server config files.
-
-## Versioning
-
-This repo includes `semver` and a version sync helper.
-
-To set a new release version:
+### Versioning
 
 ```bash
 npm install
 npm run set-version -- 0.1.1
 ```
 
-That command validates the input as semver and syncs:
+Validates input as semver and syncs:
 
 - `package.json`
 - `.codex-plugin/plugin.json`
 - `.claude-plugin/plugin.json`
 - `.cursor-plugin/plugin.json`
 
-The same script also writes `.release-version.env` for CI with:
+Also writes `.release-version.env` with `RELEASE_VERSION`, `NPM_DIST_TAG`, and `PACKAGE_TARBALL`.
 
-- `RELEASE_VERSION`
-- `NPM_DIST_TAG`
-- `PACKAGE_TARBALL`
+### Release checklist
 
-## Deploying changes
+1. Update manifests and this README as needed.
+2. `npm install`.
+3. `npm run set-version -- <new-version>`.
+4. `npm pack`.
+5. Smoke test OpenClaw: `openclaw plugins install .` → `openclaw gateway restart` → confirm `openclaw mcp list` shows `tasktrace`.
+6. Smoke test Claude: `claude --plugin-dir .`, ask *"what did I do today"*, and verify Claude reads from TaskTrace.
 
-1. Update `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.codex-plugin/marketplace.json`, `.mcp.json`, and this README as needed.
-2. Install dependencies:
+### Docs
 
-```bash
-npm install
-```
+- Claude plugin docs: https://code.claude.com/docs/en/plugins
+- Claude MCP docs: https://code.claude.com/docs/en/mcp
+- MCP lifecycle spec: https://modelcontextprotocol.io/specification/2024-11-05/basic/lifecycle
+- OpenClaw plugin manifest: https://docs.openclaw.ai/plugins/manifest
+- TaskTrace docs: https://tasktrace.com/docs
 
-3. If you are cutting a release, bump the version with semver validation:
+### License
 
-```bash
-npm run set-version -- 0.1.1
-```
-
-4. Build the release artifact:
-
-```bash
-npm pack
-```
-
-5. Smoke test the generated archive with OpenClaw:
-
-```bash
-openclaw plugins install .
-openclaw gateway restart
-openclaw plugins inspect tasktrace-mcp
-openclaw channels list
-```
-
-Confirm the plugin is enabled, that `openclaw mcp list` shows the `tasktrace` server, and that the `tasktrace` channel is available.
-
-6. Smoke test the Claude plugin layout locally:
-
-```bash
-claude --plugin-dir .
-```
+MIT. See `LICENSE`.

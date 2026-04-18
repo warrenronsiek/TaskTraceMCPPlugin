@@ -1,7 +1,7 @@
 {
   "name": "tasktrace-mcp",
   "version": "1.10.0",
-  "description": "TaskTrace MCP and OpenClaw channel package for the local TaskTrace desktop app.",
+  "description": "Local MCP and OpenClaw channel bundle for TaskTrace. Lets Claude Code, Codex, and OpenClaw agents use your own work history and knowledge graph as context.",
   "type": "module",
   "license": "MIT",
   "private": false,
@@ -25,6 +25,7 @@
     "openclaw.plugin.json",
     "README.md",
     "scripts",
+    "skills",
     "src",
     "versionUpdate.mjs"
   ],

@@ -1,6 +1,6 @@
 {
   "name": "tasktrace-mcp",
-  "description": "Connects the local TaskTrace desktop app to Claude Code as an MCP server, exposing your work history, activity feeds, and screenshots.",
+  "description": "Gives Claude access to your own work history. Ask things like 'what did I do today', 'find when I worked on billing', or 'what do I know about OAuth' — Claude reads your TaskTrace activity and knowledge graph locally through an MCP server.",
   "version": "1.10.0",
   "author": {
     "name": "TaskTrace",
